@@ -14,9 +14,9 @@ initialize.icm <- function(param, init, control) {
   dat$attr$active <- rep(1, n)
 
   if(!isFALSE(param$ages)) {
-    dat$attr$severity <- sample(param$ages$severity, n, replace = TRUE, prob = param$ages$percent)
+    dat$attr$age_group <- sample(seq_along(param$ages$percent), n, replace = TRUE, prob = param$ages$percent)
   } else {
-    dat$attr$severity <- rep(1, n)
+    dat$attr$age_group <- NULL
   }
 
   if (dat$param$groups == 1) {

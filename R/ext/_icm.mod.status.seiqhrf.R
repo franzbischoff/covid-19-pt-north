@@ -145,10 +145,11 @@ infection.seiqhrf.icm <- function(dat, at) {
   ## Transmission on edgelist
   if (nrow(del) > 0) {
     if (dat$param$groups == 1) {
+      idx <- ifelse(del$p1.stat == "s", del$p1, del$p2)
       if (length(inf.prob.i) > 1) {
-        del$tprob <- inf.prob.i[at]
+        del$tprob <- inf.prob.i[at] * ifelse(is.null(dat$attr$age_group), 1, 1+dat$param$ages$prevalence[dat$attr$age_group[idx]])
       } else {
-        del$tprob <- inf.prob.i
+        del$tprob <- inf.prob.i * ifelse(is.null(dat$attr$age_group), 1, 1+dat$param$ages$prevalence[dat$attr$age_group[idx]])
       }
     } else {
       if (length(inf.prob.i) > 1) {
@@ -163,6 +164,11 @@ infection.seiqhrf.icm <- function(dat, at) {
         at <= dat$param$inter.stop.i) {
       del$tprob <- del$tprob * (1 - dat$param$inter.eff.i)
     }
+
+    # if(anyNA(del$tprob)) {
+    #   browser()
+    # }
+
     del$trans <- rbinom(nrow(del), 1, del$tprob)
     del <- del[del$trans == TRUE, ]
     if (nrow(del) > 0) {
@@ -782,7 +788,7 @@ progress.seiqhrf.icm <- function(dat, at) {
 
     if (nElig > 0) {
       gElig <- group[idsElig]
-      sElig <- dat$attr$severity[idsElig]
+      sElig <- ifelse(is.null(dat$attr$age_group), 1, dat$param$ages$severity[dat$attr$age_group[idsElig]])
       timeInHospElig <- at - dat$attr$hospTime[idsElig]
       rates <- c(fat.rate.base, fat.rate.base.g2)
       h.num.yesterday <- 0

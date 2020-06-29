@@ -128,7 +128,7 @@ plot_ly_sir <- function(data, containers, stacked = FALSE, events = NULL, real_d
       add_trace(
         x = real_data$data_relatorio,
         y = real_data$n_obitos, type = "scatter", mode = "lines",
-        line = list(color = compcols["n_obitos"], width = 4, dash = "dash"),
+        line = list(color = compcols["n_obitos"], width = 4, dash = "dot"),
         legendgroup = "real",
         showlegend = TRUE, name = complabels["n_obitos"], text = complabels["n_obitos"]
       ) %>%
@@ -136,7 +136,7 @@ plot_ly_sir <- function(data, containers, stacked = FALSE, events = NULL, real_d
         x = real_data$data_relatorio,
         y = real_data$casos_confirmados,
         type = "scatter", mode = "lines",
-        line = list(color = compcols["casos_confirmados"], width = 4, dash = "dash"),
+        line = list(color = compcols["casos_confirmados"], width = 4, dash = "dot"),
         legendgroup = "real",
         showlegend = TRUE, name = complabels["casos_confirmados"], text = complabels["casos_confirmados"]
       ) %>%
@@ -144,10 +144,13 @@ plot_ly_sir <- function(data, containers, stacked = FALSE, events = NULL, real_d
         x = real_data$data_relatorio,
         y = real_data$casos_confirmados / real_data$report_rate,
         type = "scatter", mode = "lines",
-        line = list(color = compcols["report_rate"], width = 4, dash = "dash"),
+        line = list(color = compcols["report_rate"], width = 4, dash = "dot"),
         legendgroup = "real",
         showlegend = TRUE, name = complabels["report_rate"], text = complabels["report_rate"]
       )
+
+    # cat(c(rep(0,9),real_data$casos_confirmados) /
+    #   (data[["r.num_50"]] + data[["h.num_50"]] + data[["i.num_50"]] + data[["e.num_50"]] + data[["q.num_50"]])[1:(length(real_data$casos_confirmados)+9)])
   }
 
   if (!is.null(events)) {
@@ -197,7 +200,31 @@ plot_ly_sir <- function(data, containers, stacked = FALSE, events = NULL, real_d
       ticks = "outside",
       zeroline = FALSE,
       type = ifelse(log, "log", "linear")
-    )
+    ),
+    updatemenus = list(list(
+      x = 0.11,
+      y = 0.95,
+      bgcolor = "rgba(255,255,255, 0.5)",
+      active = ifelse(log, 1, 0),
+      buttons = list(
+        list(
+          label = "linear",
+          method = "update",
+          args = list(
+            list(visible = TRUE),
+            list(yaxis = list(type = "linear"))
+          )
+        ),
+        list(
+          label = "log",
+          method = "update",
+          args = list(
+            list(visible = TRUE),
+            list(yaxis = list(type = "log"))
+          )
+        )
+      )
+    ))
   )
 
   fig

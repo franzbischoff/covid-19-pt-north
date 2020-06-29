@@ -9,8 +9,6 @@ output:
     number_sections: yes
     theme: united
     toc: yes
-    fig_width: 10
-    fig_height: 6
 creative_commons: CC BY-SA
 editor_options: 
   chunk_output_type: inline
@@ -32,14 +30,14 @@ Last Updated: `r lubridate::now("UTC")` UTC
 
 # Disclaimer
 
-This is an independent simulation and does not reflect any portuguese governmental position about the subject.
+This article is an independent simulation and does not reflect any portuguese governmental position about the subject.
 
-This is a work in progress.
+This article is a work in progress.
 
 # Concepts
 
-- **Incubation Period**: is the time between infection and the visible appearance of symptoms.
-- **Latency period**: is the period of time between infection and the ability to infect someone.
+- **Incubation Period**: is the period between infection and the visible appearance of symptoms.
+- **Latency period**: is the period between infection and the ability to infect someone.
 
 # Model Hypothesis
 
@@ -51,27 +49,27 @@ The population is assumed to be divided in compartments, for example:
 - **Infected**, symptomatic and infectious
 - **Recovered**, immune from further infection
 
-## Discrete time
+## Discrete-time
 
 The observations, for simplicity, will be analyzed as a *discrete* time-series.
-In this case we will use `days`.
+In this case, we will use `days`.
 
 ## Population
 
-The total number of individuals is modeled using currently available data for birth and death rates.
+The total number of individuals is modelled using currently available data for birth and death rates.
 
 ## Other assumptions
 
-- The population is considered big, so the random effects can be ignored.
-- The population is considered homogeneous at any point in time. This means that the individuals of any compartment are distributed randomically.
+- The population is considered large, so random effects can be ignored.
+- The population is considered homogeneous at any point in time. That means that the individuals of any compartment are distributed randomly.
 - The disease is transmitted *by proximity or contact* between an infected and a susceptible individual (individual contact model - ICM).
 - The susceptible individual becomes infected instantaneously.
-- The infected individuals may or may not be infectious, until they get symptoms.
-- The infected eventually get recovered and *become immune*, or die.
-- The *population pyramid* is taking in account for disease severity.
+- The infected individuals may or may not be infectious until they get symptoms.
+- The infected eventually get recovered and *become immune* or die.
+- The *population pyramid* is taking into account for disease severity.
 
 ```{r setup, include=FALSE}
-version_date <- lubridate::ymd("2020-04-11")
+version_date <- lubridate::ymd("2020-05-02")
 
 knitr::opts_chunk$set(
   warnings = TRUE,
@@ -127,6 +125,7 @@ suppressMessages(library(gt))
 suppressMessages(library(foreach))
 suppressMessages(library(parallel))
 suppressMessages(library(plotly))
+suppressMessages(library(lubridate))
 
 if (requireNamespace("conflicted", quietly = TRUE)) {
   conflicted::conflict_prefer("lag", "dplyr")
@@ -196,14 +195,11 @@ geo_norte <- geo_dataset %>%
   mutate(id_objeto = seq(13, n() + 13 - 1))
 
 # estimated report rate, using the algorithm from https://cmmid.github.io/visualisations/inferring-covid19-cases-from-deaths
-report_rate <- c(
-  rep(0.15, 28), 0.17, 0.19, 0.22, 0.26, 0.28, 0.28, 0.30, 0.31,
-  0.32, 0.33, 0.34, 0.33, 0.33, 0.32, 0.33, 0.34, 0.36
-)
+report_rate <- c(0.2477064, 0.180602, 0.1662818, 0.1474037, 0.1252955, 0.130398, 0.1235012, 0.1164557, 0.11698, 0.1236628, 0.1176289, 0.1117244, 0.1018746, 0.1041207, 0.1000994, 0.0958602, 0.1152385, 0.1258978, 0.1520129, 0.1740901, 0.1879152, 0.1861502, 0.2024004, 0.2077032, 0.2109673, 0.2189437, 0.2194692, 0.2152203, 0.2091051, 0.2084479, 0.2071461, 0.2162234, 0.2260962, 0.2257227, 0.2289157, 0.2258415, 0.2247725, 0.2265897, 0.2295444, 0.2239759, 0.2255915, 0.2264116, 0.2274549, 0.2261445, 0.2259043, 0.2245151, 0.2240548, 0.2244499, 0.2245181, 0.2212606, 0.2197116, 0.2154828, 0.2165272, 0.2144245)
 
 report_rate <- c(report_rate, rep(tail(report_rate, 1), tail(geo_norte$id_objeto, 1) - length(report_rate)))
 
-geo_norte <- cbind(geo_norte, report_rate = tail(report_rate, nrow(geo_norte)))
+geo_norte <- cbind(geo_norte, report_rate = head(report_rate, nrow(geo_norte)))
 
 # whole Portugal dataset ----
 
@@ -245,23 +241,23 @@ cases_dataset <- cases_dataset %>%
 
 # New extra information from whole Portugal ----
 
-extra_dataset <- dgs_extra[["features"]][["attributes"]]
-colnames <- c(
-  "data_relatorio", "casos_confirmados", "casos_confirmados_evo",
-  "recuperados", "recuperados_evo", "n_obitos", "n_obitos_evo",
-  "casos_suspeitos", "casos_suspeitos_evo", "casos_nao_confirmados",
-  # "gr_etario_0_9", "gr_etario_10_19", "gr_etario_20_29", "gr_etario_30_39",
-  # "gr_etario_40_49", "gr_etario_50_59", "gr_etario_60_69", "gr_etario_70_79",
-  # "gr_etario_80_",
-  "aguarda_resultado", "amostras", "amostras_novas",
-  "casos_novos", "fid"
-)
-names(extra_dataset) <- colnames
-extra_dataset$data_relatorio <- as.Date(as.POSIXct(extra_dataset$data_relatorio / 1000, origin = "1970-01-01"))
-
-extra_dataset <- extra_dataset %>%
-  arrange(data_relatorio) %>%
-  mutate(id_objeto = 1:n())
+# extra_dataset <- dgs_extra[["features"]][["attributes"]]
+# colnames <- c(
+#   "data_relatorio", "casos_confirmados", "casos_confirmados_evo",
+#   "recuperados", "recuperados_evo", "n_obitos", "n_obitos_evo",
+#   "casos_suspeitos", "casos_suspeitos_evo", "casos_nao_confirmados",
+#   # "gr_etario_0_9", "gr_etario_10_19", "gr_etario_20_29", "gr_etario_30_39",
+#   # "gr_etario_40_49", "gr_etario_50_59", "gr_etario_60_69", "gr_etario_70_79",
+#   # "gr_etario_80_",
+#   "aguarda_resultado", "amostras", "amostras_novas",
+#   "casos_novos", "fid"
+# )
+# names(extra_dataset) <- colnames
+# extra_dataset$data_relatorio <- as.Date(as.POSIXct(extra_dataset$data_relatorio / 1000, origin = "1970-01-01"))
+# 
+# extra_dataset <- extra_dataset %>%
+#   arrange(data_relatorio) %>%
+#   mutate(id_objeto = 1:n())
 ```
 
 ```{r check data, eval=FALSE, warning=FALSE, include=FALSE}
@@ -378,7 +374,7 @@ digraph SEIQHRF {
 
 ## Parameters
 
-There is **a lot** of parameters. We will start with the defaults and adjust accordingly to new evidences.
+There are many parameters. We will start with the defaults and adjust accordingly to new evidence.
 
 The full list of parameters is available in the source code.
 
@@ -481,9 +477,9 @@ param_docs %>%
 
 ## Time-variant parameters
 
-Several of the simulation parameters can also be varied over time. That is, as well as accepting a single value, they also accept a vector of values with length equal to `nsteps`, the number of days over which the simulation runs. Assuming `nsteps=366`, we can, for example, set `quar.rate = c(rep(1/10,30), rep(1/3, 335))`. That defines a step function in which the transition-to-isolation rate for the **I** compartment is 0.1 for the first 30 days, then steps up to 0.33 thereafter, reflecting, say, a campaign or government edict to self-isolate. Of course, the vector of values can be a smooth function, or can go up then down again, or whatever you wish to model. This is an extremely powerful feature of computational models such as this, and one very hard to incorporate into purely mathematical models.
+Some parameters also accept a vector of values which allows the model to change itself accordingly, for example, to government policies like self-isolation, or social distancing. This feature is compelling for computational models such as this, and one very hard to incorporate into purely mathematical models.
 
-Most of the parameters for which time-variation is useful support it. If they don't, you will receive an error message (the table above will be updated to include this information later).
+Most of the parameters for which time-variation is useful supports it. If they do not, an error message is raised.
 
 # Evidence
 
@@ -522,8 +518,10 @@ events <- tribble(
   23, "2020-03-15", 30, 7, 5, "Restrictions on access to commercial spaces",
   24, "2020-03-16", 35, 5, 3, "Suspension of classes",
   24, "2020-03-16", 40, 5, 3, "Close land borders",
-  26, "2020-03-18", 45, 5, 2, "Declaration of state of emergency",
-  41, "2020-04-02", 50, 3, 2, "Extension of the state of emergency"
+  26, "2020-03-18", 45, 5, 2, "Declaration of State of Emergency",
+  41, "2020-04-02", 50, 3, 2, "Extension of the State of Emergency",
+  73, "2020-05-04", 55, 7, 2, "End of the State of Emergency",
+  77, "2020-05-17", 55, 7, 2, "Extension of the alert status"
 )
 
 events %>%
@@ -531,44 +529,51 @@ events %>%
   mutate(rate.q = rate.i / 2) %>%
   distinct(dates, .keep_all = TRUE) %>%
   gt() %>%
-  cols_label(dates = md("**Date**"), labels = md("**Event**"), rate.e = md("**E-S**"), rate.i = md("**I-S**"), rate.q = md("**Q-S**")) %>%
+  cols_label(dates = md("**Date**"), labels = md("**Event**"), rate.e = md("**E-S***"), rate.i = md("**I-S***"), rate.q = md("**Q-S***")) %>%
   fmt_date(vars(dates), date_style = "day_month") %>%
   tab_header(md("**Interaction rates between compartments**")) %>%
   tab_options(table.width = pct(80))
 ```
+<center>&ast; Empirical values.</center>
 
 ```{r eval=FALSE, include=FALSE}
 rates
 ```
-
 <br/><br/><br/>
 
 ```{r}
 ages <- tribble(
   ~age, ~percent, ~severity,
-  0, 0.080340751, 1,
-  1, 0.103443363, 1,
-  2, 0.111643592, 1,
-  3, 0.123541706, 1,
-  4, 0.155134254, 1,
+  0, 0.080340751, 0.01,
+  1, 0.103443363, 0.15,
+  2, 0.111643592, 0.15,
+  3, 0.123541706, 0.15,
+  4, 0.155134254, 0.31,
   5, 0.153623583, 1,
-  6, 0.127566805, 2,
-  7, 0.08683997, 3,
-  8, 0.057865975, 4
+  6, 0.127566805, 2.77,
+  7, 0.08683997, 6.15,
+  8, 0.057865975, 11.38
 )
 
+gr_etario <- cases_dataset %>% filter(data_relatorio == version_date) %>% select(gr_etario_0_9:gr_etario_80_89)
+gr_etario <- gr_etario %>% mutate_all(~(.)/sum(gr_etario))
+gr_etario <- t(gr_etario)
+ages <- cbind(ages, prevalence = gr_etario)
 
-
+# as of April 14:
+# https://www1.nyc.gov/assets/doh/downloads/pdf/imm/covid-19-daily-data-summary-deaths-04152020-1.pdf
 ages %>%
-  mutate(age = paste0(">=", age * 10), severity = severity * 1.3 / 100) %>%
+  mutate(age = paste0(">=", age * 10), severity = round(severity * 1.3 / 100, 3)) %>%
+  select(age, percent, prevalence, severity) %>% 
   gt() %>%
-  cols_label(age = md("**Ages**"), percent = md("**Prevalence**"), severity = md("**Fatality rate**")) %>%
-  fmt_percent(columns = c("percent", "severity")) %>%
-  tab_header(md("**Age piramid and disease fatality rate**")) %>%
+  cols_label(age = md("**Ages**"), percent = md("**Population**"), prevalence= md("**Prevalence**"), severity = md("**Fatality rate***")) %>%
+  fmt_percent(columns = c("percent", "prevalence", "severity")) %>%
+  tab_header(md("**Age pyramid and disease fatality rate**")) %>%
   tab_options(table.width = pct(50))
 ```
-
+<center>&ast; Data from China CDC[@death_rate].</center>
 <br/><br/><br/>
+
 
 ```{r simulation function, include=FALSE}
 # function to set-up and run the baseline simulations
@@ -740,7 +745,7 @@ params <- list(
   type = "SEIQHRF",
   nsteps = steps,
   nsims = 32,
-  ncores = 4,
+  ncores = 8,
 
   ages = ages,
 
@@ -837,7 +842,7 @@ source("../R/plot_sir.R", encoding = "UTF-8")
 
 ## Distribution of duration in key compartments
 
-```{r get times, echo=FALSE, fig.height=6, fig.width=10, warning=FALSE}
+```{r get times, eval=FALSE, fig.height=6, fig.width=10, warning=FALSE, include=FALSE}
 # define a function to extract timings and assemble a data frame
 get_times <- function(simulate_results) {
   sim <- simulate_results$sim
@@ -881,18 +886,12 @@ get_times <- function(simulate_results) {
   gc()
 
   ## most memory intensive part
-  times <- pivot_longer(times, -s,
-    names_to = "period_type",
-    values_to = "duration"
-  )
-  gc()
-
-  return(times)
-}
-
-# times <- get_times(baseline_sim)
-
-plot_times <- times %>%
+  # times <- pivot_longer(times, -s,
+  #   names_to = "period_type",
+  #   values_to = "duration"
+  # )
+  # gather() is more efficient
+  times <- times %>% gather(period_type, duration, -s) %>%
   filter(duration <= 30) %>%
   mutate(period_type = factor(period_type,
     levels = c(
@@ -918,6 +917,12 @@ plot_times <- times %>%
   group_by(period_type, .drop = FALSE) %>%
   mutate(n = n / sum(n)) %>%
   ungroup()
+  gc()
+
+  return(times)
+}
+
+plot_times <- get_times(baseline_sim)
 
 fig <- plot_ly(plot_times,
   x = ~duration, y = ~n, colors = "Dark2",
@@ -950,7 +955,16 @@ fig <- fig %>% layout(
   )
 )
 fig <- fig %>% subplot(nrows = 3, shareX = TRUE, shareY = TRUE)
-fig
+fig  %>% add_annotations(
+    x=1,
+    y=1,
+    xref = "paper",
+    yref = "paper",
+    align = "right",
+    text = paste("Simulated on", version_date),
+    xanchor = 'right',
+    showarrow = F
+  )
 ```
 
 ## Baseline Prevalence
@@ -958,13 +972,32 @@ fig
 ### Overall - Interactive Plot
 
 ```{r baseline plot, echo=FALSE, fig.height=6, fig.width=10, warning=FALSE}
-plot_ly_sir(baseline_sim, c("e.num", "i.num", "q.num", "h.num", "f.num", "r.num"), events = events)
+plot_ly_sir(baseline_sim, c("e.num", "i.num", "q.num", "h.num", "f.num", "r.num"), events = events)  %>% add_annotations(
+    x=1,
+    y=1,
+    xref = "paper",
+    yref = "paper",
+    align = "right",
+    text = paste("Simulated on", version_date),
+    xanchor = 'right',
+    showarrow = F
+  )
 ```
 
 ### Comparison with real data - Interactive Plot
 
 ```{r simulate2, fig.height=6, fig.width=10, message=FALSE, warning=FALSE}
-plot_ly_sir(baseline_sim, c("f.num", "h.num", "i.num", "q.num", "e.num", "r.num"), stacked = TRUE, grouped = TRUE, real_data = geo_norte, events = events, log = TRUE)
+
+plot_ly_sir(baseline_sim, c("f.num", "h.num", "i.num", "q.num", "e.num", "r.num"), stacked = TRUE, grouped = TRUE, real_data = geo_norte, events = events, log = TRUE) %>% add_annotations(
+    x=1,
+    y=1,
+    xref = "paper",
+    yref = "paper",
+    align = "right",
+    text = paste("Simulated on", version_date),
+    xanchor = 'right',
+    showarrow = F
+  )
 ```
 
 ### Basic reproduction number $R_{0}$
@@ -982,10 +1015,19 @@ incident_case_dates <- as.Date("2020-02-28") + incident_case_dates
 # convert to an incidence object
 incidence_all <- as.data.frame(incidence(incident_case_dates))
 
-fig <- plot_ly(incidence_all, x = ~dates, y = ~counts, type = "bar")
+fig <- plot_ly(incidence_all, x = ~dates, y = ~counts, type = "bar") %>% add_annotations(
+    x=1,
+    y=1,
+    xref = "paper",
+    yref = "paper",
+    align = "right",
+    text = paste("Simulated on", version_date),
+    xanchor = 'right',
+    showarrow = F
+  )
 
 fig <- fig %>% layout(
-  title = "Daily incidence in Portugal - North",
+  title = paste0("Daily incidence in Portugal - North"),
   paper_bgcolor = "rgb(255,255,255)", plot_bgcolor = "rgb(229,229,229)",
   xaxis = list(
     title = "Date",
@@ -1024,11 +1066,20 @@ si_mean <- 4.5
 si_sd <- 3.4
 
 # get a set of MLE estimates for R0 and plot
-smooth_it <- lowess(incidence_growth_phase$counts, f = 0.3)$y
+smooth_it <- lowess(incidence_growth_phase$counts, f = 0.6)$y
 smooth_it <- smooth_it - min(smooth_it)
 res <- get_R(smooth_it, si_mean = si_mean, si_sd = si_sd)
 
-fig <- plot_ly(x = ~ res$R_grid, y = ~ res$R_like) %>% add_lines()
+fig <- plot_ly(x = ~ res$R_grid, y = ~ res$R_like) %>% add_lines() %>% add_annotations(
+    x=1,
+    y=1,
+    xref = "paper",
+    yref = "paper",
+    align = "right",
+    text = paste("Simulated on", version_date),
+    xanchor = 'right',
+    showarrow = F
+  )
 
 fig <- fig %>% layout(
   title = "Likelihood distribution of R",
@@ -1081,8 +1132,26 @@ est <- estimate_R(incidence(incident_case_dates, last_date = today() + 2),
   ))
 )
 
-ggplotly(plot(est, "R"))
-ggplotly(plot(est, "SI"))
+ggplotly(plot(est, "R")) %>% add_annotations(
+    x=1,
+    y=1,
+    xref = "paper",
+    yref = "paper",
+    align = "right",
+    text = paste("Simulated on", version_date),
+    xanchor = 'right',
+    showarrow = F
+  )
+ggplotly(plot(est, "SI")) %>% add_annotations(
+    x=1,
+    y=1,
+    xref = "paper",
+    yref = "paper",
+    align = "right",
+    text = paste("Simulated on", version_date),
+    xanchor = 'right',
+    showarrow = F
+  )
 
 # SL = c(5, 9, 7, 3, 7, 8, 1, 3, 7, 9, 12)
 # 
@@ -1110,10 +1179,92 @@ ggplotly(plot(est, "SI"))
 
 
 
-# Running an intervention experiments
+# Running intervention experiments
 
 Work in progress...
 
-# Acknowledgments
+## End of State of Emergency
 
-This simulations are heavily based on Tim Churches' code, available [here](https://timchurches.github.io/blog/).
+First Scenario (pessimistic):
+
+ - E-S, I-S, Q-S are set back to March, 15
+
+```{r simulate3, fig.height=6, fig.width=10, message=FALSE, warning=FALSE}
+# intervention_sim <- do.call("simulate", params)
+#
+plot_ly_sir(intervention_sim, c("e.num", "i.num", "q.num", "h.num", "f.num", "r.num"), events = events)  %>% add_annotations(
+    x=1,
+    y=1,
+    xref = "paper",
+    yref = "paper",
+    align = "right",
+    text = paste("Scenario 1 - Simulated on", version_date),
+    xanchor = 'right',
+    showarrow = F
+  )
+#
+plot_ly_sir(intervention_sim, c("f.num", "h.num", "i.num", "q.num", "e.num", "r.num"), stacked = TRUE, grouped = TRUE, real_data = geo_norte, events = events, log = TRUE) %>% add_annotations(
+    x=1,
+    y=1,
+    xref = "paper",
+    yref = "paper",
+    align = "right",
+    text = paste("Scenario 1 - Simulated on", version_date),
+    xanchor = 'right',
+    showarrow = F
+  )
+```
+
+Second Scenario (optimistic):
+
+ - E-S, is set back to March, 15. I-S and Q-S still under control.
+
+```{r simulate4, fig.height=6, fig.width=10, message=FALSE, warning=FALSE}
+# intervention_sim2 <- do.call("simulate", params)
+plot_ly_sir(intervention_sim2, c("e.num", "i.num", "q.num", "h.num", "f.num", "r.num"), events = events)  %>% add_annotations(
+    x=1,
+    y=1,
+    xref = "paper",
+    yref = "paper",
+    align = "right",
+    text = paste("Scenario 2 - Simulated on", version_date),
+    xanchor = 'right',
+    showarrow = F
+  )
+
+plot_ly_sir(intervention_sim2, c("f.num", "h.num", "i.num", "q.num", "e.num", "r.num"), stacked = TRUE, grouped = TRUE, real_data = geo_norte, events = events, log = TRUE) %>% add_annotations(
+    x=1,
+    y=1,
+    xref = "paper",
+    yref = "paper",
+    align = "right",
+    text = paste("Scenario 2 - Simulated on", version_date),
+    xanchor = 'right',
+    showarrow = F
+  )
+```
+
+# Acknowledgements
+
+These simulations are heavily based on Tim Churches' code, available [here](https://timchurches.github.io/blog/).
+
+<div id="disqus_thread"></div>
+<script>
+
+/**
+*  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+*  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables*/
+/*
+var disqus_config = function () {
+this.page.url = PAGE_URL;  // Replace PAGE_URL with your page's canonical URL variable
+this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+};
+*/
+(function() { // DON'T EDIT BELOW THIS LINE
+var d = document, s = d.createElement('script');
+s.src = 'https://franz-rpubs.disqus.com/embed.js';
+s.setAttribute('data-timestamp', +new Date());
+(d.head || d.body).appendChild(s);
+})();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>

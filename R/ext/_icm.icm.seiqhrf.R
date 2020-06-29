@@ -125,9 +125,9 @@ icm.seiqhrf <- function(param, init, control) {
 
     sout <- foreach(s = 1:nsims, .packages = "EpiModel") %dopar% {
 
-      source("./ext/_icm.mod.init.seiqhrf.R") # dirty fix, foreach doest not find this functions
-      source("./ext/_icm.saveout.seiqhrf.R") # dirty fix, foreach doest not find this functions
-
+      # source("./ext/_icm.mod.init.seiqhrf.R") # dirty fix, foreach doest not find this functions
+      source("./R/ext/_icm.saveout.seiqhrf.R") # dirty fix, foreach doest not find this functions
+      #
         control$nsims <- 1
         control$currsim <- s
 
