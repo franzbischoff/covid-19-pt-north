@@ -132,9 +132,6 @@ if (requireNamespace("conflicted", quietly = TRUE)) {
   conflicted::conflict_prefer("filter", "dplyr")
   conflicted::conflict_prefer("layout", "plotly")
 }
-```
-
-```{r monkey patch, echo=FALSE}
 
 # Extension to EpiModel patch, by Tim Churches, with little changes
 source_files <- c(
@@ -150,6 +147,10 @@ source_files <- c(
 for (source_file in source_files) {
   source(paste0("./ext/", source_file))
 }
+
+source("../R/plot_sir.R", encoding = "UTF-8")
+
+m <- 1
 ```
 
 ```{r fetch data, echo=FALSE}
@@ -195,7 +196,17 @@ geo_norte <- geo_dataset %>%
   mutate(id_objeto = seq(13, n() + 13 - 1))
 
 # estimated report rate, using the algorithm from https://cmmid.github.io/visualisations/inferring-covid19-cases-from-deaths
-report_rate <- c(0.2477064, 0.180602, 0.1662818, 0.1474037, 0.1252955, 0.130398, 0.1235012, 0.1164557, 0.11698, 0.1236628, 0.1176289, 0.1117244, 0.1018746, 0.1041207, 0.1000994, 0.0958602, 0.1152385, 0.1258978, 0.1520129, 0.1740901, 0.1879152, 0.1861502, 0.2024004, 0.2077032, 0.2109673, 0.2189437, 0.2194692, 0.2152203, 0.2091051, 0.2084479, 0.2071461, 0.2162234, 0.2260962, 0.2257227, 0.2289157, 0.2258415, 0.2247725, 0.2265897, 0.2295444, 0.2239759, 0.2255915, 0.2264116, 0.2274549, 0.2261445, 0.2259043, 0.2245151, 0.2240548, 0.2244499, 0.2245181, 0.2212606, 0.2197116, 0.2154828, 0.2165272, 0.2144245)
+
+report_rate_list <- list()
+
+report_rate_list[["0409"]] <- c(rep(0.25, 20), rep(0.25, steps - 20))
+
+report_rate_list[["0419"]] <- c(rep(0.15, 28), 0.17, 0.19, 0.22, 0.26, 0.28, 0.28, 0.30, 0.31,
+  0.32, 0.33, 0.34, 0.33, 0.33, 0.32, 0.33, 0.34, 0.36)
+
+report_rate_list[["0505"]] <- c(0.2477064, 0.180602, 0.1662818, 0.1474037, 0.1252955, 0.130398, 0.1235012, 0.1164557, 0.11698, 0.1236628, 0.1176289, 0.1117244, 0.1018746, 0.1041207, 0.1000994, 0.0958602, 0.1152385, 0.1258978, 0.1520129, 0.1740901, 0.1879152, 0.1861502, 0.2024004, 0.2077032, 0.2109673, 0.2189437, 0.2194692, 0.2152203, 0.2091051, 0.2084479, 0.2071461, 0.2162234, 0.2260962, 0.2257227, 0.2289157, 0.2258415, 0.2247725, 0.2265897, 0.2295444, 0.2239759, 0.2255915, 0.2264116, 0.2274549, 0.2261445, 0.2259043, 0.2245151, 0.2240548, 0.2244499, 0.2245181, 0.2212606, 0.2197116, 0.2154828, 0.2165272, 0.2144245)
+
+report_rate <- report_rate_list[[m]]
 
 report_rate <- c(report_rate, rep(tail(report_rate, 1), tail(geo_norte$id_objeto, 1) - length(report_rate)))
 
@@ -508,7 +519,37 @@ Last checked: 2020-04-11
 <br/><br/>
 
 ```{r}
-events <- tribble(
+events <- list()
+
+events[["0409"]] <- tribble(
+  ~idx, ~dates, ~pos, ~rate.e, ~rate.i, ~labels,
+  16, "2020-03-08", 10, 10, 10, "Suspension of visits to health facilities and prisons",
+  18, "2020-03-10", 15, 10, 10, "Suspension of flights from the most affected areas of Italy",
+  19, "2020-03-11", 17, 10, 10, "WHO declares pandemic",
+  21, "2020-03-13", 20, 10, 10, "Portugal alert status statement",
+  21, "2020-03-13", 25, 10, 10, "Closing of museums",
+  23, "2020-03-15", 30, 10, 10, "Restrictions on access to commercial spaces",
+  24, "2020-03-16", 35, 10, 10, "Suspension of classes",
+  24, "2020-03-16", 40, 10, 10, "Close land borders",
+  26, "2020-03-18", 45, 10, 10, "Declaration of state of emergency",
+  41, "2020-04-02", 50, 10, 10, "Extension of the state of emergency"
+)
+
+events[["0419"]] <- tribble(
+  ~idx, ~dates, ~pos, ~rate.e, ~rate.i, ~labels,
+  16, "2020-03-08", 10, 16, 10, "Suspension of visits to health facilities and prisons",
+  18, "2020-03-10", 15, 15, 10, "Suspension of flights from the most affected areas of Italy",
+  19, "2020-03-11", 17, 15, 10, "WHO declares pandemic",
+  21, "2020-03-13", 20, 10, 7, "Portugal alert status statement",
+  21, "2020-03-13", 25, 10, 7, "Closing of museums",
+  23, "2020-03-15", 30, 7, 5, "Restrictions on access to commercial spaces",
+  24, "2020-03-16", 35, 5, 3, "Suspension of classes",
+  24, "2020-03-16", 40, 5, 3, "Close land borders",
+  26, "2020-03-18", 45, 5, 2, "Declaration of state of emergency",
+  41, "2020-04-02", 50, 3, 2, "Extension of the state of emergency"
+)
+
+events[["0505"]] <- tribble(
   ~idx, ~dates, ~pos, ~rate.e, ~rate.i, ~labels,
   16, "2020-03-08", 10, 16, 10, "Suspension of visits to health facilities and prisons",
   18, "2020-03-10", 15, 15, 10, "Suspension of flights from the most affected areas of Italy",
@@ -523,6 +564,8 @@ events <- tribble(
   73, "2020-05-04", 55, 7, 2, "End of the State of Emergency",
   77, "2020-05-17", 55, 7, 2, "Extension of the alert status"
 )
+
+events <- events[[m]]
 
 events %>%
   select(dates, labels, rate.e, rate.i) %>%
@@ -542,7 +585,35 @@ rates
 <br/><br/><br/>
 
 ```{r}
-ages <- tribble(
+ages <- list()
+
+ages[["0409"]] <- ages <- tribble(
+  ~age, ~percent, ~severity,
+    0, 0.080340751,  1,
+    1, 0.103443363,  1,
+    2, 0.111643592,  1,
+    3, 0.123541706,  1,
+    4, 0.155134254,  1,
+    5, 0.153623583,  1,
+    6, 0.127566805,  4,
+    7, 0.08683997,   4,
+    8, 0.057865975,  4
+)
+
+ages[["0419"]] <- tribble(
+  ~age, ~percent, ~severity,
+  0, 0.080340751, 1,
+  1, 0.103443363, 1,
+  2, 0.111643592, 1,
+  3, 0.123541706, 1,
+  4, 0.155134254, 1,
+  5, 0.153623583, 1,
+  6, 0.127566805, 2,
+  7, 0.08683997, 3,
+  8, 0.057865975, 4
+)
+
+ages[["0505"]] <- tribble(
   ~age, ~percent, ~severity,
   0, 0.080340751, 0.01,
   1, 0.103443363, 0.15,
@@ -554,6 +625,8 @@ ages <- tribble(
   7, 0.08683997, 6.15,
   8, 0.057865975, 11.38
 )
+
+ages <- ages[[m]]
 
 gr_etario <- cases_dataset %>% filter(data_relatorio == version_date) %>% select(gr_etario_0_9:gr_etario_80_89)
 gr_etario <- gr_etario %>% mutate_all(~(.)/sum(gr_etario))
@@ -837,7 +910,6 @@ params <- list(
 
 # set.seed(1) ## seed was moved to the extension code, because multithread breaks it.
 # baseline_sim <- do.call("simulate", params)
-source("../R/plot_sir.R", encoding = "UTF-8")
 ```
 
 ## Distribution of duration in key compartments
