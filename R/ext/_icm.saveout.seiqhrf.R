@@ -1,18 +1,19 @@
 saveout.seiqhrf.icm <- function(dat, s, out = NULL) {
 
     alist2df <- function(dat,s) {
-        alist <- list()
-        alist$expTime <- dat$attr$expTime
-        alist$infTime <- dat$attr$infTime
-        alist$quarTime <- dat$attr$quarTime
-        alist$recovTime <- dat$attr$recovTime
-        alist$hospTime <- dat$attr$hospTime
-        alist$dischTime <- dat$attr$dischTime
-        alist$fatTime <- dat$attr$fatTime
+        # alist <- list()
+        alist <- dat$attr
+        # alist$expTime <- dat$attr$expTime
+        # alist$infTime <- dat$attr$infTime
+        # alist$quarTime <- dat$attr$quarTime
+        # alist$recovTime <- dat$attr$recovTime
+        # alist$hospTime <- dat$attr$hospTime
+        # alist$dischTime <- dat$attr$dischTime
+        # alist$fatTime <- dat$attr$fatTime
         alist <- lapply(alist, `length<-`, max(lengths(alist)))
         return(data.frame(alist))
     }
-    
+
   if (s == 1) {
     out <- list()
     out$param <- dat$param
@@ -27,11 +28,11 @@ saveout.seiqhrf.icm <- function(dat, s, out = NULL) {
     }
   }
 
-  # capture transition times from attribs  
+  # capture transition times from attribs
   if (dat$control$type %in% c("SEIQHR", "SEIQHRF")) {
-    out$times[[paste("sim",s,sep="")]] <- alist2df(dat,s)  
+    out$times[[paste("sim",s,sep="")]] <- alist2df(dat,s)
   }
-    
+
   ## Processing for final run
   if (s == dat$control$nsims) {
 

@@ -707,6 +707,8 @@ simulate <- function(
                      dq.rate = (7 / 365) / 1000,
                      dh.rate = (20 / 365) / 1000,
                      dr.rate = (7 / 365) / 1000,
+                     start_point = 0,
+                     sim = NULL,
                      out = "mean") {
   control <- control.icm(
     type = type,
@@ -768,7 +770,7 @@ simulate <- function(
     dr.rate = dr.rate
   )
 
-  sim <- icm.seiqhrf(param, init, control)
+  sim <- icm.seiqhrf(param, init, control, start_point, sim)
   sim_df <- as.data.frame(sim, out = out)
 
   return(list(sim = sim, df = sim_df))
@@ -796,13 +798,13 @@ pt_hdeathrrate <- pt_hospdeaths / pt_admissions * 1000 # 55.63542
 pt_hdeathrrate_norte <- pt_hospdeaths_norte / pt_admissions_norte * 1000 # 50.50482
 pt_hospcap <- 492000
 
-population <- pt_population_norte
+population <- pt_population_norte / 50
 start_inf <- 4
 hospcap <- pt_hospcap
 birthrate <- pt_birthrate_norte
 deathrate <- pt_deathrrate_norte
 hdeathrrate <- pt_hdeathrrate_norte
-steps <- 180
+steps <- 30
 
 rate.e <- rep(events$rate.e[1], events$idx[1])
 rate.i <- rep(events$rate.i[1], events$idx[1])
@@ -817,8 +819,8 @@ for (i in seq_len(nrow(events))) {
 params <- list(
   type = "SEIQHRF",
   nsteps = steps,
-  nsims = 32,
-  ncores = 8,
+  nsims = 2,
+  ncores = 1,
 
   ages = ages,
 
@@ -905,11 +907,14 @@ params <- list(
   dr.rate = (deathrate / 365) / 1000,
   #################
   # Summary function for the simulation runs. median is also available, or percentiles, see the EpiModel documentation.
+  start_point = 0,
+  sim = NULL,
   out = "mean"
 )
 
 # set.seed(1) ## seed was moved to the extension code, because multithread breaks it.
 # baseline_sim <- do.call("simulate", params)
+teste <- do.call("simulate", params)
 ```
 
 ## Distribution of duration in key compartments

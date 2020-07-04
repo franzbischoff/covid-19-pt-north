@@ -5,14 +5,16 @@ merge.seiqhrf.icm <- function(x, y, ...) {
     stop("x and y have different structure")
   }
   if (x$control$nsims > 1 & y$control$nsims > 1 &
-      !identical(sapply(x, class), sapply(y, class))) {
+    !identical(sapply(x, class), sapply(y, class))) {
     stop("x and y have different structure")
   }
 
   ## Check params
   check1 <- identical(x$param, y$param)
-  check2 <- identical(x$control[-which(names(x$control) %in% c("nsims", "currsim"))],
-                      y$control[-which(names(y$control) %in% c("nsims", "currsim"))])
+  check2 <- identical(
+    x$control[-which(names(x$control) %in% c("nsims", "currsim"))],
+    y$control[-which(names(y$control) %in% c("nsims", "currsim"))]
+  )
 
   if (check1 == FALSE) {
     stop("x and y have different parameters")
@@ -43,81 +45,88 @@ merge.seiqhrf.icm <- function(x, y, ...) {
 }
 
 
-icm.seiqhrf <- function(param, init, control) {
-
+icm.seiqhrf <- function(param, init, control, start_point = 0, sim = NULL) {
   crosscheck.icm(param, init, control)
   verbose.icm(control, type = "startup")
+  # browser()
   nsims <- control$nsims
   ncores <- ifelse(control$nsims == 1, 1, min(future::availableCores(), control$ncores))
   control$ncores <- ncores
 
+  if (start_point == 0 | start_point >= control$nsteps) {
+    sim_steps <- 2:control$nsteps
+  } else {
+    sim_steps <- start_point:control$nsteps
+  }
+
+
   if (ncores == 1) {
 
-      # Simulation loop start
-      for (s in 1:control$nsims) {
+    # Simulation loop start
+    for (s in 1:control$nsims) {
 
-        ## Initialization module
-        if (!is.null(control[["initialize.FUN"]])) {
-          dat <- do.call(control[["initialize.FUN"]], list(param, init, control))
+      ## Initialization module
+      if (!is.null(control[["initialize.FUN"]]) & is.null(sim)) {
+        dat <- do.call(control[["initialize.FUN"]], list(param, init, control))
+      } else if (!is.null(sim)) {
+        dat <- sim
+      }
+
+
+      # Timestep loop
+      for (at in sim_steps) {
+
+        ## User Modules
+        um <- control$user.mods
+        if (length(um) > 0) {
+          for (i in 1:length(um)) {
+            dat <- do.call(control[[um[i]]], list(dat, at))
+          }
+        }
+
+        ## Infection
+        if (!is.null(control[["infection.FUN"]])) {
+          dat <- do.call(control[["infection.FUN"]], list(dat, at))
         }
 
 
-        # Timestep loop
-        for (at in 2:control$nsteps) {
-
-          ## User Modules
-          um <- control$user.mods
-          if (length(um) > 0) {
-            for (i in 1:length(um)) {
-              dat <- do.call(control[[um[i]]], list(dat, at))
-            }
-          }
-
-          ## Infection
-          if (!is.null(control[["infection.FUN"]])) {
-            dat <- do.call(control[["infection.FUN"]], list(dat, at))
-          }
-
-
-          ## Recovery
-          if (!is.null(control[["recovery.FUN"]])) {
-            dat <- do.call(control[["recovery.FUN"]], list(dat, at))
-          }
-
-
-          ## Departure Module
-          if (!is.null(control[["departures.FUN"]])) {
-            dat <- do.call(control[["departures.FUN"]], list(dat, at))
-          }
-
-
-          ## Arrival Module
-          if (!is.null(control[["arrivals.FUN"]])) {
-            dat <- do.call(control[["arrivals.FUN"]], list(dat, at))
-          }
-
-
-          ## Outputs
-          if (!is.null(control[["get_prev.FUN"]])) {
-            dat <- do.call(control[["get_prev.FUN"]], list(dat, at))
-          }
-
-
-          ## Track progress
-          verbose.icm(dat, type = "progress", s, at)
+        ## Recovery
+        if (!is.null(control[["recovery.FUN"]])) {
+          dat <- do.call(control[["recovery.FUN"]], list(dat, at))
         }
 
-        # Set output
-        if (s == 1) {
-          out <- saveout.seiqhrf.icm(dat, s)
-        } else {
-          out <- saveout.seiqhrf.icm(dat, s, out)
+
+        ## Departure Module
+        if (!is.null(control[["departures.FUN"]])) {
+          dat <- do.call(control[["departures.FUN"]], list(dat, at))
         }
 
-      } # Simulation loop end
 
-      class(out) <- "icm"
+        ## Arrival Module
+        if (!is.null(control[["arrivals.FUN"]])) {
+          dat <- do.call(control[["arrivals.FUN"]], list(dat, at))
+        }
 
+
+        ## Outputs
+        if (!is.null(control[["get_prev.FUN"]])) {
+          dat <- do.call(control[["get_prev.FUN"]], list(dat, at))
+        }
+
+
+        ## Track progress
+        verbose.icm(dat, type = "progress", s, at)
+      }
+
+      # Set output
+      if (s == 1) {
+        out <- saveout.seiqhrf.icm(dat, s)
+      } else {
+        out <- saveout.seiqhrf.icm(dat, s, out)
+      }
+    } # Simulation loop end
+
+    class(out) <- "icm"
   } # end of single core execution
 
   if (ncores > 1) {
@@ -126,77 +135,78 @@ icm.seiqhrf <- function(param, init, control) {
     sout <- foreach(s = 1:nsims, .packages = "EpiModel") %dopar% {
 
       # source("./ext/_icm.mod.init.seiqhrf.R") # dirty fix, foreach doest not find this functions
-      source("./R/ext/_icm.saveout.seiqhrf.R") # dirty fix, foreach doest not find this functions
+      source("D:/Workspaces/RStudio/Covid-19/R/ext/_icm.saveout.seiqhrf.R") # dirty fix, foreach doest not find this functions
       #
-        control$nsims <- 1
-        control$currsim <- s
+      control$nsims <- 1
+      control$currsim <- s
 
-        set.seed(control$currsim)
+      set.seed(control$currsim)
 
-        ## Initialization module
-        if (!is.null(control[["initialize.FUN"]])) {
-          dat <- do.call(control[["initialize.FUN"]], list(param, init, control))
+      ## Initialization module
+      if (!is.null(control[["initialize.FUN"]]) & is.null(sim)) {
+        dat <- do.call(control[["initialize.FUN"]], list(param, init, control))
+      } else if (!is.null(sim)) {
+        dat <- sim
+      }
+
+      # Timestep loop
+      for (at in sim_steps) {
+
+        ## User Modules
+        um <- control$user.mods
+        if (length(um) > 0) {
+          for (i in 1:length(um)) {
+            dat <- do.call(control[[um[i]]], list(dat, at))
+          }
         }
 
-        # Timestep loop
-        for (at in 2:control$nsteps) {
-
-          ## User Modules
-          um <- control$user.mods
-          if (length(um) > 0) {
-            for (i in 1:length(um)) {
-              dat <- do.call(control[[um[i]]], list(dat, at))
-            }
-          }
-
-          ## Infection
-          if (!is.null(control[["infection.FUN"]])) {
-            dat <- do.call(control[["infection.FUN"]], list(dat, at))
-          }
-
-
-          ## Recovery
-          if (!is.null(control[["recovery.FUN"]])) {
-            dat <- do.call(control[["recovery.FUN"]], list(dat, at))
-          }
-
-
-          ## Departure Module
-          if (!is.null(control[["departures.FUN"]])) {
-            dat <- do.call(control[["departures.FUN"]], list(dat, at))
-          }
-
-
-          ## Arrival Module
-          if (!is.null(control[["arrivals.FUN"]])) {
-            dat <- do.call(control[["arrivals.FUN"]], list(dat, at))
-          }
-
-
-          ## Outputs
-          if (!is.null(control[["get_prev.FUN"]])) {
-            dat <- do.call(control[["get_prev.FUN"]], list(dat, at))
-          }
-
-
-          ## Track progress
-          verbose.icm(dat, type = "progress", s, at)
+        ## Infection
+        if (!is.null(control[["infection.FUN"]])) {
+          dat <- do.call(control[["infection.FUN"]], list(dat, at))
         }
 
-        # Set output
-        out <- saveout.seiqhrf.icm(dat, s=1)
-        class(out) <- "icm"
-        return(out)
 
-  }
+        ## Recovery
+        if (!is.null(control[["recovery.FUN"]])) {
+          dat <- do.call(control[["recovery.FUN"]], list(dat, at))
+        }
+
+
+        ## Departure Module
+        if (!is.null(control[["departures.FUN"]])) {
+          dat <- do.call(control[["departures.FUN"]], list(dat, at))
+        }
+
+
+        ## Arrival Module
+        if (!is.null(control[["arrivals.FUN"]])) {
+          dat <- do.call(control[["arrivals.FUN"]], list(dat, at))
+        }
+
+
+        ## Outputs
+        if (!is.null(control[["get_prev.FUN"]])) {
+          dat <- do.call(control[["get_prev.FUN"]], list(dat, at))
+        }
+
+
+        ## Track progress
+        verbose.icm(dat, type = "progress", s, at)
+      }
+
+      # Set output
+      out <- saveout.seiqhrf.icm(dat, s = 1)
+      class(out) <- "icm"
+      return(out)
+    }
 
     # aggregate results collected from each thread
     collected_times <- list()
 
     # collect the times from sout then delete them
     for (i in 1:length(sout)) {
-        collected_times[[paste0("sim", i)]] <- sout[[i]]$times$sim1
-        sout[[i]]$times <- NULL
+      collected_times[[paste0("sim", i)]] <- sout[[i]]$times$sim1
+      sout[[i]]$times <- NULL
     }
 
     # merge $epi structures
