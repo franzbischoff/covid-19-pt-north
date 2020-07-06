@@ -82,7 +82,6 @@ infection.seiqhrf.icm <- function(dat, at) {
       stop("Length of inf.prob.q.g2 must be 1 or the value of nsteps")
     }
   }
-
 # Transmission from infected
   ## Expected acts
   if (dat$param$groups == 1) {
@@ -164,10 +163,6 @@ infection.seiqhrf.icm <- function(dat, at) {
         at <= dat$param$inter.stop.i) {
       del$tprob <- del$tprob * (1 - dat$param$inter.eff.i)
     }
-
-    # if(anyNA(del$tprob)) {
-    #   browser()
-    # }
 
     del$trans <- rbinom(nrow(del), 1, del$tprob)
     del <- del[del$trans == TRUE, ]

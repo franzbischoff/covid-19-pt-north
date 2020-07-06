@@ -46,32 +46,47 @@ merge.seiqhrf.icm <- function(x, y, ...) {
 
 
 icm.seiqhrf <- function(param, init, control, start_point = 0, sim = NULL) {
-  crosscheck.icm(param, init, control)
-  verbose.icm(control, type = "startup")
-  # browser()
+
+  resim <- FALSE
+  # resimulate ----
+  if(start_point > 0 && is.null(sim)) {
+    stop("You need to set an object the give an start point")
+  }
+  if (start_point >= control$nsteps) {
+    stop("You need to set the startpoint beyond the nsteps")
+  }
+
+  if(!is.null(sim)) {
+    resim <- TRUE
+    sim_steps <- start_point:control$nsteps
+  } else {
+    sim_steps <- 2:control$nsteps
+  }
+
   nsims <- control$nsims
   ncores <- ifelse(control$nsims == 1, 1, min(future::availableCores(), control$ncores))
   control$ncores <- ncores
-
-  if (start_point == 0 | start_point >= control$nsteps) {
-    sim_steps <- 2:control$nsteps
-  } else {
-    sim_steps <- start_point:control$nsteps
-  }
-
+  crosscheck.icm(param, init, control)
+  verbose.icm(control, type = "startup")
 
   if (ncores == 1) {
 
     # Simulation loop start
     for (s in 1:control$nsims) {
 
-      ## Initialization module
-      if (!is.null(control[["initialize.FUN"]]) & is.null(sim)) {
-        dat <- do.call(control[["initialize.FUN"]], list(param, init, control))
-      } else if (!is.null(sim)) {
+      if(resim) {
+        init$s.num <- as.numeric(sim$epi$s.num[[s]][[start_point]])
+        init$i.num <- as.numeric(sim$epi$i.num[[s]][[start_point]])
+        init$r.num <- as.numeric(sim$epi$r.num[[s]][[start_point]])
+        init$e.num <- as.numeric(sim$epi$e.num[[s]][[start_point]])
+        init$q.num <- as.numeric(sim$epi$q.num[[s]][[start_point]])
+        init$h.num <- as.numeric(sim$epi$h.num[[s]][[start_point]])
+        init$f.num <- as.numeric(sim$epi$f.num[[s]][[start_point]])
         dat <- sim
+        dat$epi <- lapply(dat$epi, function(x) {return(x[[s]])})
+      } else if (!is.null(control[["initialize.FUN"]])) {       ## Initialization module
+        dat <- do.call(control[["initialize.FUN"]], list(param, init, control))
       }
-
 
       # Timestep loop
       for (at in sim_steps) {

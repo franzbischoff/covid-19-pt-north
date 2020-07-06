@@ -6,7 +6,6 @@ initialize.icm <- function(param, init, control) {
   dat$init <- init
   dat$control <- control
 
-
   # Set attributes
   dat$attr <- list()
   numeric.init <- init[which(sapply(init, class) == "numeric")]

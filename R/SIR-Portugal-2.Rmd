@@ -798,7 +798,7 @@ pt_hdeathrrate <- pt_hospdeaths / pt_admissions * 1000 # 55.63542
 pt_hdeathrrate_norte <- pt_hospdeaths_norte / pt_admissions_norte * 1000 # 50.50482
 pt_hospcap <- 492000
 
-population <- pt_population_norte / 50
+population <- pt_population_norte / 100
 start_inf <- 4
 hospcap <- pt_hospcap
 birthrate <- pt_birthrate_norte
@@ -886,7 +886,7 @@ params <- list(
   hosp.rate = 1 / 100, # i, e -> I,Q to H
   #################
   #################
-  disch.rand = TRUE, # If TRUE, binomial, if FALSE, random sample.
+  disch.rand = TRUE, # If TRUE, binomial, if FALSE, random samplse.
   disch.rate = 1 / 15, # g -> H to R
   #################
   #################
@@ -907,14 +907,17 @@ params <- list(
   dr.rate = (deathrate / 365) / 1000,
   #################
   # Summary function for the simulation runs. median is also available, or percentiles, see the EpiModel documentation.
-  start_point = 0,
-  sim = NULL,
+  # start_point = 25,
+  # sim = teste$sim,
+
   out = "mean"
 )
 
 # set.seed(1) ## seed was moved to the extension code, because multithread breaks it.
 # baseline_sim <- do.call("simulate", params)
-teste <- do.call("simulate", params)
+# teste <- do.call("simulate", params)
+# 
+# 
 ```
 
 ## Distribution of duration in key compartments
@@ -999,7 +1002,7 @@ get_times <- function(simulate_results) {
   return(times)
 }
 
-plot_times <- get_times(baseline_sim)
+plot_times <- get_times(teste)
 
 fig <- plot_ly(plot_times,
   x = ~duration, y = ~n, colors = "Dark2",
@@ -1049,7 +1052,18 @@ fig  %>% add_annotations(
 ### Overall - Interactive Plot
 
 ```{r baseline plot, echo=FALSE, fig.height=6, fig.width=10, warning=FALSE}
-plot_ly_sir(baseline_sim, c("e.num", "i.num", "q.num", "h.num", "f.num", "r.num"), events = events)  %>% add_annotations(
+plot_ly_sir(teste, c("e.num", "i.num", "q.num", "h.num", "f.num", "r.num"), events = events)  %>% add_annotations(
+    x=1,
+    y=1,
+    xref = "paper",
+    yref = "paper",
+    align = "right",
+    text = paste("Simulated on", version_date),
+    xanchor = 'right',
+    showarrow = F
+  )
+
+plot_ly_sir(teste2, c("e.num", "i.num", "q.num", "h.num", "f.num", "r.num"), events = events)  %>% add_annotations(
     x=1,
     y=1,
     xref = "paper",

@@ -1,6 +1,6 @@
 saveout.seiqhrf.icm <- function(dat, s, out = NULL) {
 
-    alist2df <- function(dat,s) {
+      alist2df <- function(dat,s) {
         # alist <- list()
         alist <- dat$attr
         # alist$expTime <- dat$attr$expTime
@@ -16,7 +16,9 @@ saveout.seiqhrf.icm <- function(dat, s, out = NULL) {
 
   if (s == 1) {
     out <- list()
+    out$init <- dat$init
     out$param <- dat$param
+    out$attr <- dat$attr
     out$control <- dat$control
     out$epi <- list()
     for (j in 1:length(dat$epi)) {
