@@ -145,7 +145,8 @@ source_files <- c(
 )
 
 for (source_file in source_files) {
-  source(paste0("./ext/", source_file))
+  source(paste0("./ext_exp/", source_file))
+  # source(paste0("./ext/", source_file))
 }
 
 source("../R/plot_sir.R", encoding = "UTF-8")
@@ -197,12 +198,16 @@ geo_norte <- geo_dataset %>%
 
 # estimated report rate, using the algorithm from https://cmmid.github.io/visualisations/inferring-covid19-cases-from-deaths
 
+steps <- 30
+
 report_rate_list <- list()
 
 report_rate_list[["0409"]] <- c(rep(0.25, 20), rep(0.25, steps - 20))
 
-report_rate_list[["0419"]] <- c(rep(0.15, 28), 0.17, 0.19, 0.22, 0.26, 0.28, 0.28, 0.30, 0.31,
-  0.32, 0.33, 0.34, 0.33, 0.33, 0.32, 0.33, 0.34, 0.36)
+report_rate_list[["0419"]] <- c(
+  rep(0.15, 28), 0.17, 0.19, 0.22, 0.26, 0.28, 0.28, 0.30, 0.31,
+  0.32, 0.33, 0.34, 0.33, 0.33, 0.32, 0.33, 0.34, 0.36
+)
 
 report_rate_list[["0505"]] <- c(0.2477064, 0.180602, 0.1662818, 0.1474037, 0.1252955, 0.130398, 0.1235012, 0.1164557, 0.11698, 0.1236628, 0.1176289, 0.1117244, 0.1018746, 0.1041207, 0.1000994, 0.0958602, 0.1152385, 0.1258978, 0.1520129, 0.1740901, 0.1879152, 0.1861502, 0.2024004, 0.2077032, 0.2109673, 0.2189437, 0.2194692, 0.2152203, 0.2091051, 0.2084479, 0.2071461, 0.2162234, 0.2260962, 0.2257227, 0.2289157, 0.2258415, 0.2247725, 0.2265897, 0.2295444, 0.2239759, 0.2255915, 0.2264116, 0.2274549, 0.2261445, 0.2259043, 0.2245151, 0.2240548, 0.2244499, 0.2245181, 0.2212606, 0.2197116, 0.2154828, 0.2165272, 0.2144245)
 
@@ -265,7 +270,7 @@ cases_dataset <- cases_dataset %>%
 # )
 # names(extra_dataset) <- colnames
 # extra_dataset$data_relatorio <- as.Date(as.POSIXct(extra_dataset$data_relatorio / 1000, origin = "1970-01-01"))
-# 
+#
 # extra_dataset <- extra_dataset %>%
 #   arrange(data_relatorio) %>%
 #   mutate(id_objeto = 1:n())
@@ -589,15 +594,15 @@ ages <- list()
 
 ages[["0409"]] <- tribble(
   ~age, ~percent, ~severity,
-    0, 0.080340751,  1,
-    1, 0.103443363,  1,
-    2, 0.111643592,  1,
-    3, 0.123541706,  1,
-    4, 0.155134254,  1,
-    5, 0.153623583,  1,
-    6, 0.127566805,  4,
-    7, 0.08683997,   4,
-    8, 0.057865975,  4
+  0, 0.080340751, 1,
+  1, 0.103443363, 1,
+  2, 0.111643592, 1,
+  3, 0.123541706, 1,
+  4, 0.155134254, 1,
+  5, 0.153623583, 1,
+  6, 0.127566805, 4,
+  7, 0.08683997, 4,
+  8, 0.057865975, 4
 )
 
 ages[["0419"]] <- tribble(
@@ -628,8 +633,10 @@ ages[["0505"]] <- tribble(
 
 ages <- ages[[m]]
 
-gr_etario <- cases_dataset %>% filter(data_relatorio == version_date) %>% select(gr_etario_0_9:gr_etario_80_89)
-gr_etario <- gr_etario %>% mutate_all(~(.)/sum(gr_etario))
+gr_etario <- cases_dataset %>%
+  filter(data_relatorio == version_date) %>%
+  select(gr_etario_0_9:gr_etario_80_89)
+gr_etario <- gr_etario %>% mutate_all(~ (.) / sum(gr_etario))
 gr_etario <- t(gr_etario)
 ages <- cbind(ages, prevalence = gr_etario)
 
@@ -637,9 +644,9 @@ ages <- cbind(ages, prevalence = gr_etario)
 # https://www1.nyc.gov/assets/doh/downloads/pdf/imm/covid-19-daily-data-summary-deaths-04152020-1.pdf
 ages %>%
   mutate(age = paste0(">=", age * 10), severity = round(severity * 1.3 / 100, 3)) %>%
-  select(age, percent, prevalence, severity) %>% 
+  select(age, percent, prevalence, severity) %>%
   gt() %>%
-  cols_label(age = md("**Ages**"), percent = md("**Population**"), prevalence= md("**Prevalence**"), severity = md("**Fatality rate***")) %>%
+  cols_label(age = md("**Ages**"), percent = md("**Population**"), prevalence = md("**Prevalence**"), severity = md("**Fatality rate***")) %>%
   fmt_percent(columns = c("percent", "prevalence", "severity")) %>%
   tab_header(md("**Age pyramid and disease fatality rate**")) %>%
   tab_options(table.width = pct(50))
@@ -696,7 +703,7 @@ simulate <- function(
                      hosp.cap = 40,
                      fat.rate.overcap = 1 / 25,
                      fat.tcoeff = 0.5,
-                     vital = TRUE,
+                     vital = FALSE,
                      a.rate = (10.5 / 365) / 1000,
                      a.prop.e = 0.01,
                      a.prop.i = 0.001,
@@ -710,32 +717,6 @@ simulate <- function(
                      start_point = 0,
                      sim = NULL,
                      out = "mean") {
-  control <- control.icm(
-    type = type,
-    nsteps = nsteps,
-    nsims = nsims,
-    ncores = ncores,
-    prog.rand = prog.rand,
-    rec.rand = rec.rand,
-    infection.FUN = infection.FUN,
-    recovery.FUN = recovery.FUN,
-    arrivals.FUN = arrivals.FUN,
-    departures.FUN = departures.FUN,
-    get_prev.FUN = get_prev.FUN,
-    verbose = TRUE,
-    verbose.int = 1
-  )
-
-  init <- init.icm(
-    s.num = s.num,
-    e.num = e.num,
-    i.num = i.num,
-    q.num = q.num,
-    h.num = h.num,
-    r.num = r.num,
-    f.num = f.num
-  )
-
   param <- param.icm(
     inf.prob.e = inf.prob.e,
     act.rate.e = act.rate.e,
@@ -767,13 +748,42 @@ simulate <- function(
     di.rate = di.rate,
     dq.rate = dq.rate,
     dh.rate = dh.rate,
-    dr.rate = dr.rate
+    dr.rate = dr.rate,
+    start_point = start_point,
+    sim = sim
   )
 
-  sim <- icm.seiqhrf(param, init, control, start_point, sim)
-  sim_df <- as.data.frame(sim, out = out)
+  init <- init.icm(
+    s.num = s.num,
+    e.num = e.num,
+    i.num = i.num,
+    q.num = q.num,
+    h.num = h.num,
+    r.num = r.num,
+    f.num = f.num
+  )
 
-  return(list(sim = sim, df = sim_df))
+  control <- control.icm(
+    type = type,
+    nsteps = nsteps,
+    nsims = nsims,
+    ncores = ncores,
+    prog.rand = prog.rand,
+    rec.rand = rec.rand,
+    infection.FUN = infection.FUN,
+    recovery.FUN = recovery.FUN,
+    arrivals.FUN = arrivals.FUN,
+    departures.FUN = departures.FUN,
+    get_prev.FUN = get_prev.FUN,
+    verbose = TRUE,
+    verbose.int = 1
+  )
+
+  sim <- icm.seiqhrf(param, init, control)
+  # sim_df <- as.data.frame(sim, out = out)
+
+  # return(list(sim = sim, df = sim_df))
+  return(sim)
 }
 ```
 
@@ -804,7 +814,6 @@ hospcap <- pt_hospcap
 birthrate <- pt_birthrate_norte
 deathrate <- pt_deathrrate_norte
 hdeathrrate <- pt_hdeathrrate_norte
-steps <- 30
 
 rate.e <- rep(events$rate.e[1], events$idx[1])
 rate.i <- rep(events$rate.i[1], events$idx[1])
@@ -895,6 +904,7 @@ params <- list(
   # Can be used to model emigration as well as deaths.
   vital = TRUE, # Enables demographics, that is, arrivals and departures, to and from the simulated population.
   # (10.5 / 365) / 1000, # Arrival rate. Default is approx the daily birth rate of Australia
+  # #########
   a.rate = (birthrate / 365) / 1000,
   a.prop.e = 0.01,
   a.prop.i = 0.001,
@@ -905,9 +915,10 @@ params <- list(
   dq.rate = (deathrate / 365) / 1000,
   dh.rate = (hdeathrrate / 365) / 1000,
   dr.rate = (deathrate / 365) / 1000,
+  # #######
   #################
   # Summary function for the simulation runs. median is also available, or percentiles, see the EpiModel documentation.
-  # start_point = 25,
+  start_point = 5,
   # sim = teste$sim,
 
   out = "mean"
@@ -916,8 +927,8 @@ params <- list(
 # set.seed(1) ## seed was moved to the extension code, because multithread breaks it.
 # baseline_sim <- do.call("simulate", params)
 # teste <- do.call("simulate", params)
-# 
-# 
+#
+#
 ```
 
 ## Distribution of duration in key compartments
@@ -971,32 +982,33 @@ get_times <- function(simulate_results) {
   #   values_to = "duration"
   # )
   # gather() is more efficient
-  times <- times %>% gather(period_type, duration, -s) %>%
-  filter(duration <= 30) %>%
-  mutate(period_type = factor(period_type,
-    levels = c(
-      "incubation_period",
-      "illness_duration",
-      "hosp_los",
-      "illness_duration_hosp",
-      "quarantine_delay",
-      "survival_time"
-    ),
-    labels = c(
-      "Incubation",
-      "Illness",
-      "Hospital care required",
-      "Illness (hosp)",
-      "Delay entering isolation",
-      "Survival time (fatalities)"
-    )
-  )) %>%
-  arrange(period_type) %>%
-  add_count(period_type, duration) %>%
-  distinct(period_type, duration, n) %>%
-  group_by(period_type, .drop = FALSE) %>%
-  mutate(n = n / sum(n)) %>%
-  ungroup()
+  times <- times %>%
+    gather(period_type, duration, -s) %>%
+    filter(duration <= 30) %>%
+    mutate(period_type = factor(period_type,
+      levels = c(
+        "incubation_period",
+        "illness_duration",
+        "hosp_los",
+        "illness_duration_hosp",
+        "quarantine_delay",
+        "survival_time"
+      ),
+      labels = c(
+        "Incubation",
+        "Illness",
+        "Hospital care required",
+        "Illness (hosp)",
+        "Delay entering isolation",
+        "Survival time (fatalities)"
+      )
+    )) %>%
+    arrange(period_type) %>%
+    add_count(period_type, duration) %>%
+    distinct(period_type, duration, n) %>%
+    group_by(period_type, .drop = FALSE) %>%
+    mutate(n = n / sum(n)) %>%
+    ungroup()
   gc()
 
   return(times)
@@ -1035,16 +1047,16 @@ fig <- fig %>% layout(
   )
 )
 fig <- fig %>% subplot(nrows = 3, shareX = TRUE, shareY = TRUE)
-fig  %>% add_annotations(
-    x=1,
-    y=1,
-    xref = "paper",
-    yref = "paper",
-    align = "right",
-    text = paste("Simulated on", version_date),
-    xanchor = 'right',
-    showarrow = F
-  )
+fig %>% add_annotations(
+  x = 1,
+  y = 1,
+  xref = "paper",
+  yref = "paper",
+  align = "right",
+  text = paste("Simulated on", version_date),
+  xanchor = "right",
+  showarrow = F
+)
 ```
 
 ## Baseline Prevalence
@@ -1052,43 +1064,54 @@ fig  %>% add_annotations(
 ### Overall - Interactive Plot
 
 ```{r baseline plot, echo=FALSE, fig.height=6, fig.width=10, warning=FALSE}
-plot_ly_sir(teste, c("e.num", "i.num", "q.num", "h.num", "f.num", "r.num"), events = events)  %>% add_annotations(
-    x=1,
-    y=1,
-    xref = "paper",
-    yref = "paper",
-    align = "right",
-    text = paste("Simulated on", version_date),
-    xanchor = 'right',
-    showarrow = F
-  )
+plot_ly_sir(teste, c("e.num", "i.num", "q.num", "h.num", "f.num", "r.num"), events = events) %>% add_annotations(
+  x = 1,
+  y = 1,
+  xref = "paper",
+  yref = "paper",
+  align = "right",
+  text = paste("Simulated on", version_date),
+  xanchor = "right",
+  showarrow = F
+)
 
-plot_ly_sir(teste2, c("e.num", "i.num", "q.num", "h.num", "f.num", "r.num"), events = events)  %>% add_annotations(
-    x=1,
-    y=1,
-    xref = "paper",
-    yref = "paper",
-    align = "right",
-    text = paste("Simulated on", version_date),
-    xanchor = 'right',
-    showarrow = F
-  )
+plot_ly_sir(teste2, c("e.num", "i.num", "q.num", "h.num", "f.num", "r.num"), events = events) %>% add_annotations(
+  x = 1,
+  y = 1,
+  xref = "paper",
+  yref = "paper",
+  align = "right",
+  text = paste("Simulated on", version_date),
+  xanchor = "right",
+  showarrow = F
+)
 ```
 
 ### Comparison with real data - Interactive Plot
 
 ```{r simulate2, fig.height=6, fig.width=10, message=FALSE, warning=FALSE}
 
-plot_ly_sir(baseline_sim, c("f.num", "h.num", "i.num", "q.num", "e.num", "r.num"), stacked = TRUE, grouped = TRUE, real_data = geo_norte, events = events, log = TRUE) %>% add_annotations(
-    x=1,
-    y=1,
-    xref = "paper",
-    yref = "paper",
-    align = "right",
-    text = paste("Simulated on", version_date),
-    xanchor = 'right',
-    showarrow = F
-  )
+plot_ly_sir(teste, c("f.num", "h.num", "i.num", "q.num", "e.num", "r.num"), stacked = TRUE, grouped = TRUE, real_data = geo_norte, events = events, log = TRUE) %>% add_annotations(
+  x = 1,
+  y = 1,
+  xref = "paper",
+  yref = "paper",
+  align = "right",
+  text = paste("Simulated on", version_date),
+  xanchor = "right",
+  showarrow = F
+)
+
+plot_ly_sir(teste2, c("f.num", "h.num", "i.num", "q.num", "e.num", "r.num"), stacked = TRUE, grouped = TRUE, real_data = geo_norte, events = events, log = TRUE) %>% add_annotations(
+  x = 1,
+  y = 1,
+  xref = "paper",
+  yref = "paper",
+  align = "right",
+  text = paste("Simulated on", version_date),
+  xanchor = "right",
+  showarrow = F
+)
 ```
 
 ### Basic reproduction number $R_{0}$
@@ -1107,15 +1130,15 @@ incident_case_dates <- as.Date("2020-02-28") + incident_case_dates
 incidence_all <- as.data.frame(incidence(incident_case_dates))
 
 fig <- plot_ly(incidence_all, x = ~dates, y = ~counts, type = "bar") %>% add_annotations(
-    x=1,
-    y=1,
-    xref = "paper",
-    yref = "paper",
-    align = "right",
-    text = paste("Simulated on", version_date),
-    xanchor = 'right',
-    showarrow = F
-  )
+  x = 1,
+  y = 1,
+  xref = "paper",
+  yref = "paper",
+  align = "right",
+  text = paste("Simulated on", version_date),
+  xanchor = "right",
+  showarrow = F
+)
 
 fig <- fig %>% layout(
   title = paste0("Daily incidence in Portugal - North"),
@@ -1161,14 +1184,16 @@ smooth_it <- lowess(incidence_growth_phase$counts, f = 0.6)$y
 smooth_it <- smooth_it - min(smooth_it)
 res <- get_R(smooth_it, si_mean = si_mean, si_sd = si_sd)
 
-fig <- plot_ly(x = ~ res$R_grid, y = ~ res$R_like) %>% add_lines() %>% add_annotations(
-    x=1,
-    y=1,
+fig <- plot_ly(x = ~ res$R_grid, y = ~ res$R_like) %>%
+  add_lines() %>%
+  add_annotations(
+    x = 1,
+    y = 1,
     xref = "paper",
     yref = "paper",
     align = "right",
     text = paste("Simulated on", version_date),
-    xanchor = 'right',
+    xanchor = "right",
     showarrow = F
   )
 
@@ -1224,31 +1249,31 @@ est <- estimate_R(incidence(incident_case_dates, last_date = today() + 2),
 )
 
 ggplotly(plot(est, "R")) %>% add_annotations(
-    x=1,
-    y=1,
-    xref = "paper",
-    yref = "paper",
-    align = "right",
-    text = paste("Simulated on", version_date),
-    xanchor = 'right',
-    showarrow = F
-  )
+  x = 1,
+  y = 1,
+  xref = "paper",
+  yref = "paper",
+  align = "right",
+  text = paste("Simulated on", version_date),
+  xanchor = "right",
+  showarrow = F
+)
 ggplotly(plot(est, "SI")) %>% add_annotations(
-    x=1,
-    y=1,
-    xref = "paper",
-    yref = "paper",
-    align = "right",
-    text = paste("Simulated on", version_date),
-    xanchor = 'right',
-    showarrow = F
-  )
+  x = 1,
+  y = 1,
+  xref = "paper",
+  yref = "paper",
+  align = "right",
+  text = paste("Simulated on", version_date),
+  xanchor = "right",
+  showarrow = F
+)
 
 # SL = c(5, 9, 7, 3, 7, 8, 1, 3, 7, 9, 12)
-# 
-# si_data_wuhan_Li <- data.frame(EL = as.integer(rep(0, 11)), ER = as.integer(rep(1, 
+#
+# si_data_wuhan_Li <- data.frame(EL = as.integer(rep(0, 11)), ER = as.integer(rep(1,
 #     11)), SL = as.integer(SL), SR = as.integer(SL + 1))
-# 
+#
 # ## fixing the random seeds
 # MCMC_seed <- 1
 # overall_seed <- 2
@@ -1264,7 +1289,7 @@ ggplotly(plot(est, "SI")) %>% add_annotations(
 #     n2 = 50
 #   ))
 # )
-# 
+#
 # plot(hubei_res_empirical_si)
 ```
 
@@ -1283,27 +1308,27 @@ First Scenario (pessimistic):
 ```{r simulate3, fig.height=6, fig.width=10, message=FALSE, warning=FALSE}
 # intervention_sim <- do.call("simulate", params)
 #
-plot_ly_sir(intervention_sim, c("e.num", "i.num", "q.num", "h.num", "f.num", "r.num"), events = events)  %>% add_annotations(
-    x=1,
-    y=1,
-    xref = "paper",
-    yref = "paper",
-    align = "right",
-    text = paste("Scenario 1 - Simulated on", version_date),
-    xanchor = 'right',
-    showarrow = F
-  )
+plot_ly_sir(intervention_sim, c("e.num", "i.num", "q.num", "h.num", "f.num", "r.num"), events = events) %>% add_annotations(
+  x = 1,
+  y = 1,
+  xref = "paper",
+  yref = "paper",
+  align = "right",
+  text = paste("Scenario 1 - Simulated on", version_date),
+  xanchor = "right",
+  showarrow = F
+)
 #
 plot_ly_sir(intervention_sim, c("f.num", "h.num", "i.num", "q.num", "e.num", "r.num"), stacked = TRUE, grouped = TRUE, real_data = geo_norte, events = events, log = TRUE) %>% add_annotations(
-    x=1,
-    y=1,
-    xref = "paper",
-    yref = "paper",
-    align = "right",
-    text = paste("Scenario 1 - Simulated on", version_date),
-    xanchor = 'right',
-    showarrow = F
-  )
+  x = 1,
+  y = 1,
+  xref = "paper",
+  yref = "paper",
+  align = "right",
+  text = paste("Scenario 1 - Simulated on", version_date),
+  xanchor = "right",
+  showarrow = F
+)
 ```
 
 Second Scenario (optimistic):
@@ -1312,27 +1337,27 @@ Second Scenario (optimistic):
 
 ```{r simulate4, fig.height=6, fig.width=10, message=FALSE, warning=FALSE}
 # intervention_sim2 <- do.call("simulate", params)
-plot_ly_sir(intervention_sim2, c("e.num", "i.num", "q.num", "h.num", "f.num", "r.num"), events = events)  %>% add_annotations(
-    x=1,
-    y=1,
-    xref = "paper",
-    yref = "paper",
-    align = "right",
-    text = paste("Scenario 2 - Simulated on", version_date),
-    xanchor = 'right',
-    showarrow = F
-  )
+plot_ly_sir(intervention_sim2, c("e.num", "i.num", "q.num", "h.num", "f.num", "r.num"), events = events) %>% add_annotations(
+  x = 1,
+  y = 1,
+  xref = "paper",
+  yref = "paper",
+  align = "right",
+  text = paste("Scenario 2 - Simulated on", version_date),
+  xanchor = "right",
+  showarrow = F
+)
 
 plot_ly_sir(intervention_sim2, c("f.num", "h.num", "i.num", "q.num", "e.num", "r.num"), stacked = TRUE, grouped = TRUE, real_data = geo_norte, events = events, log = TRUE) %>% add_annotations(
-    x=1,
-    y=1,
-    xref = "paper",
-    yref = "paper",
-    align = "right",
-    text = paste("Scenario 2 - Simulated on", version_date),
-    xanchor = 'right',
-    showarrow = F
-  )
+  x = 1,
+  y = 1,
+  xref = "paper",
+  yref = "paper",
+  align = "right",
+  text = paste("Scenario 2 - Simulated on", version_date),
+  xanchor = "right",
+  showarrow = F
+)
 ```
 
 # Acknowledgements
