@@ -151,7 +151,7 @@ for (source_file in source_files) {
 
 source("../R/plot_sir.R", encoding = "UTF-8")
 
-m <- 2
+m <- 3
 ```
 
 ```{r fetch data, echo=FALSE}
@@ -829,7 +829,7 @@ params <- list(
   type = "SEIQHRF",
   nsteps = steps,
   nsims = 8,
-  ncores = 1,
+  ncores = 8,
 
   ages = ages,
 
@@ -918,8 +918,11 @@ params <- list(
   # #######
   #################
   # Summary function for the simulation runs. median is also available, or percentiles, see the EpiModel documentation.
-  start_point = 16,
-  sim = teste1$sim,
+  # start_point = 16,
+  # sim = teste1$sim,
+  # 
+  # start_point = 24,
+  # sim = teste2$sim,
 
   out = "mean"
 )
@@ -1064,7 +1067,18 @@ fig %>% add_annotations(
 ### Overall - Interactive Plot
 
 ```{r baseline plot, echo=FALSE, fig.height=6, fig.width=10, warning=FALSE}
-plot_ly_sir(teste, c("e.num", "i.num", "q.num", "h.num", "f.num", "r.num"), events = events) %>% add_annotations(
+plot_ly_sir(teste1, c("e.num", "i.num", "q.num", "h.num", "f.num", "r.num"), events = events) %>% add_annotations(
+  x = 1,
+  y = 1,
+  xref = "paper",
+  yref = "paper",
+  align = "right",
+  text = paste("Simulated on", version_date),
+  xanchor = "right",
+  showarrow = F
+)
+
+plot_ly_sir(teste2, c("e.num", "i.num", "q.num", "h.num", "f.num", "r.num"), events = events) %>% add_annotations(
   x = 1,
   y = 1,
   xref = "paper",
