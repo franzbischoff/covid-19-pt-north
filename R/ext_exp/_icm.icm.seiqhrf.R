@@ -46,16 +46,14 @@ merge.seiqhrf.icm <- function(x, y, ...) {
 
 
 icm.seiqhrf <- function(param, init, control) {
-
-  if(param$start_point > 0) {# && !is.null(param$sim)) {
+  if (param$start_point > 0) { # && !is.null(param$sim)) {
     reinit <- TRUE
-    param$sim <- teste$sim
   } else {
     reinit <- FALSE
   }
 
   crosscheck.icm(param, init, control)
-  # verbose.icm(control, type = "startup")
+  verbose.icm(control, type = "startup")
   nsims <- control$nsims
   ncores <- ifelse(control$nsims == 1, 1, min(future::availableCores(), control$ncores))
   control$ncores <- ncores
@@ -66,10 +64,10 @@ icm.seiqhrf <- function(param, init, control) {
     for (s in 1:control$nsims) {
 
       ## Initialization module
-      if(reinit) {
+      if (reinit) {
         dat <- param$sim
-        dat$epi <- lapply(param$sim$epi, function(x) x[,s])
-        dat$attr <- param$sim$attr_hist[[s]][[param$start_point]]
+        dat$epi <- lapply(param$sim$epi, function(x) x[, s])
+        dat$attr <- as.list(param$sim$attr_hist[[s]][[param$start_point]])
         dat$attr_hist <- param$sim$attr_hist[[s]]
         dat$init <- list()
         dat$init[["e.num"]] <- dat$epi$e.num[[param$start_point]]
@@ -80,17 +78,16 @@ icm.seiqhrf <- function(param, init, control) {
         dat$init[["f.num"]] <- dat$epi$f.num[[param$start_point]]
         # dat <- init_status.icm(dat)
         dat <- get_prev.icm(dat, at = param$start_point)
-        nsteps <- (param$start_point):control$nsteps
+        nsteps <- (param$start_point+1):control$nsteps
       } else if (!is.null(control[["initialize.FUN"]])) {
-        dat <- do.call(control[["initialize.FUN"]], list(param, init, control))
+        # dat <- do.call(control[["initialize.FUN"]], list(param, init, control))
+        dat <- initialize.icm(param, init, control)
         dat <- saveout_step.icm(dat, 1)
         nsteps <- 2:control$nsteps
       }
 
       # Timestep loop
       for (at in nsteps) {
-
-        cat("debug1", at,"\n")
 
         ## User Modules
         um <- control$user.mods
@@ -99,36 +96,41 @@ icm.seiqhrf <- function(param, init, control) {
             dat <- do.call(control[[um[i]]], list(dat, at))
           }
         }
-        cat("debug2", at,"\n")
+
         ## Infection
-        if (!is.null(control[["infection.FUN"]])) {
-          dat <- do.call(control[["infection.FUN"]], list(dat, at))
-        }
-        cat("debug3", at,"\n")
+        # if (!is.null(control[["infection.FUN"]])) {
+        #   dat <- do.call(control[["infection.FUN"]], list(dat, at))
+        # }
+        dat <- infection.seiqhrf.icm(dat, at)
+
         ## Recovery
-        if (!is.null(control[["recovery.FUN"]])) {
-          dat <- do.call(control[["recovery.FUN"]], list(dat, at))
-        }
-        cat("debug4", at,"\n")
+        # if (!is.null(control[["recovery.FUN"]])) {
+        #   dat <- do.call(control[["recovery.FUN"]], list(dat, at))
+        # }
+        dat <- progress.seiqhrf.icm(dat, at)
+
         ## Departure Module
-        if (!is.null(control[["departures.FUN"]])) {
-          dat <- do.call(control[["departures.FUN"]], list(dat, at))
-        }
-        cat("debug5", at,"\n")
+        # if (!is.null(control[["departures.FUN"]])) {
+        #   dat <- do.call(control[["departures.FUN"]], list(dat, at))
+        # }
+        dat <- departures.seiqhrf.icm(dat, at)
+
         ## Arrival Module
-        if (!is.null(control[["arrivals.FUN"]])) {
-          dat <- do.call(control[["arrivals.FUN"]], list(dat, at))
-        }
-        cat("debug6", at,"\n")
+        # if (!is.null(control[["arrivals.FUN"]])) {
+        #   dat <- do.call(control[["arrivals.FUN"]], list(dat, at))
+        # }
+        dat <- arrivals.icm(dat, at)
+        # dat <- arrivals.seiqhrf.icm(dat, at)
+
         ## Outputs
-        if (!is.null(control[["get_prev.FUN"]])) {
-          dat <- do.call(control[["get_prev.FUN"]], list(dat, at))
-        }
-        cat("debug7", at,"\n")
+        # if (!is.null(control[["get_prev.FUN"]])) {
+        #   dat <- do.call(control[["get_prev.FUN"]], list(dat, at))
+        # }
+        dat <- get_prev.seiqhrf.icm(dat, at)
+
         ## Track progress
-        # verbose.icm(dat, type = "progress", s, at)
+        verbose.icm(dat, type = "progress", s, at)
         dat <- saveout_step.icm(dat, at)
-        cat("debug8", at,"\n")
       }
 
       # Set output
@@ -240,7 +242,6 @@ icm.seiqhrf <- function(param, init, control) {
 
 
 orig_icm.seiqhrf <- function(param, init, control) {
-
   crosscheck.icm(param, init, control)
   verbose.icm(control, type = "startup")
   nsims <- control$nsims
@@ -309,18 +310,15 @@ orig_icm.seiqhrf <- function(param, init, control) {
       } else {
         out <- saveout.seiqhrf.icm(dat, s, out)
       }
-
     } # Simulation loop end
 
     class(out) <- "icm"
-
   } # end of single core execution
 
   if (ncores > 1) {
     doParallel::registerDoParallel(ncores)
 
     sout <- foreach(s = 1:nsims) %dopar% {
-
       control$nsims <- 1
       control$currsim <- s
 
@@ -375,10 +373,9 @@ orig_icm.seiqhrf <- function(param, init, control) {
       }
 
       # Set output
-      out <- saveout.seiqhrf.icm(dat, s=1)
+      out <- saveout.seiqhrf.icm(dat, s = 1)
       class(out) <- "icm"
       return(out)
-
     }
 
     # aggregate results collected from each thread

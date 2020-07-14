@@ -57,7 +57,9 @@ saveout_step.icm <- function (dat, at) {
     alist <- list()
     alist <- dat$attr
     alist <- lapply(alist, `length<-`, max(lengths(alist)))
-    return(data.frame(alist))
+    alist <- data.frame(alist)
+    alist$status <- as.character(alist$status)
+    return(alist)
   }
 
   dat$attr_hist[[at]]<- attr2df(dat)

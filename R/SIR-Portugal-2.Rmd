@@ -151,7 +151,7 @@ for (source_file in source_files) {
 
 source("../R/plot_sir.R", encoding = "UTF-8")
 
-m <- 3
+m <- 2
 ```
 
 ```{r fetch data, echo=FALSE}
@@ -198,11 +198,11 @@ geo_norte <- geo_dataset %>%
 
 # estimated report rate, using the algorithm from https://cmmid.github.io/visualisations/inferring-covid19-cases-from-deaths
 
-steps <- 30
+steps <- 180
 
 report_rate_list <- list()
 
-report_rate_list[["0409"]] <- c(rep(0.25, 20), rep(0.25, steps - 20))
+report_rate_list[["0409"]] <- rep(0.25, 20)
 
 report_rate_list[["0419"]] <- c(
   rep(0.15, 28), 0.17, 0.19, 0.22, 0.26, 0.28, 0.28, 0.30, 0.31,
@@ -780,10 +780,10 @@ simulate <- function(
   )
 
   sim <- icm.seiqhrf(param, init, control)
-  # sim_df <- as.data.frame(sim, out = out)
+  sim_df <- as.data.frame(sim, out = out)
 
-  # return(list(sim = sim, df = sim_df))
-  return(sim)
+  return(list(sim = sim, df = sim_df))
+  # return(sim)
 }
 ```
 
@@ -828,7 +828,7 @@ for (i in seq_len(nrow(events))) {
 params <- list(
   type = "SEIQHRF",
   nsteps = steps,
-  nsims = 2,
+  nsims = 8,
   ncores = 1,
 
   ages = ages,
@@ -918,8 +918,8 @@ params <- list(
   # #######
   #################
   # Summary function for the simulation runs. median is also available, or percentiles, see the EpiModel documentation.
-  start_point = 5,
-  # sim = teste$sim,
+  start_point = 16,
+  sim = teste1$sim,
 
   out = "mean"
 )
@@ -1014,7 +1014,7 @@ get_times <- function(simulate_results) {
   return(times)
 }
 
-plot_times <- get_times(teste)
+plot_times <- get_times(teste2)
 
 fig <- plot_ly(plot_times,
   x = ~duration, y = ~n, colors = "Dark2",
