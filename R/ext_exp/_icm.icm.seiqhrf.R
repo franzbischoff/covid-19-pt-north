@@ -244,6 +244,15 @@ icm.seiqhrf <- function(param, init, control) {
       sout[[i]]$times <- NULL
     }
 
+    # aggregate attr collected from each thread
+    collected_attr <- list()
+
+    # collect the times from sout then delete them
+    for (i in 1:length(sout)) {
+      collected_attr[[paste0("sim", i)]] <- sout[[i]]$attr_hist$sim1
+      sout[[i]]$attr_hist <- NULL
+    }
+
     # merge $epi structures
     merged.out <- sout[[1]]
     for (i in 2:length(sout)) {
@@ -253,6 +262,7 @@ icm.seiqhrf <- function(param, init, control) {
 
     # add the collected timing data
     out$times <- collected_times
+    out$attr_hist <- collected_attr
 
     class(out) <- "icm"
   } # end of parallel execution
