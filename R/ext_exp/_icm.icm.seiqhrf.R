@@ -54,6 +54,8 @@ icm.seiqhrf <- function(param, init, control) {
     reinit <- FALSE
   }
 
+  cat(getwd())
+
   crosscheck.icm(param, init, control)
   verbose.icm(control, type = "startup")
   nsims <- control$nsims
@@ -79,7 +81,7 @@ icm.seiqhrf <- function(param, init, control) {
         dat$init[["r.num"]] <- dat$epi$r.num[[param$start_point]]
         dat$init[["f.num"]] <- dat$epi$f.num[[param$start_point]]
         # dat <- init_status.icm(dat)
-        dat <- get_prev.icm(dat, at = param$start_point)
+        dat <- get_prev.seiqhrf.icm(dat, at = param$start_point)
         nsteps <- (param$start_point + 1):control$nsteps
       } else if (!is.null(control[["initialize.FUN"]])) {
         # dat <- do.call(control[["initialize.FUN"]], list(param, init, control))
@@ -149,10 +151,17 @@ icm.seiqhrf <- function(param, init, control) {
   if (ncores > 1) {
     doParallel::registerDoParallel(ncores)
 
+
+
     sout <- foreach(s = 1:nsims, .packages = "EpiModel") %dopar% {
 
       # source("./ext/_icm.mod.init.seiqhrf.R") # dirty fix, foreach doest not find this functions
-      source("D:/Workspaces/RStudio/Covid-19/R/ext_exp/_icm.saveout.seiqhrf.R") # dirty fix, foreach doest not find this functions
+      source(paste0(getwd(), "/ext_exp/_icm.control.seiqhrf.R"), encoding = "UTF-8")
+      source(paste0(getwd(), "/ext_exp/_icm.mod.init.seiqhrf.R"), encoding = "UTF-8")
+      source(paste0(getwd(), "/ext_exp/_icm.mod.status.seiqhrf.R"), encoding = "UTF-8")
+      source(paste0(getwd(), "/ext_exp/_icm.mod.vital.seiqhrf.R"), encoding = "UTF-8")
+      source(paste0(getwd(), "/ext_exp/_icm.saveout.seiqhrf.R"), encoding = "UTF-8") # dirty fix, foreach doest not find this functions
+      source(paste0(getwd(), "/ext_exp/_icm.utils.seiqhrf.R"), encoding = "UTF-8")
       #
       control$nsims <- 1
       control$currsim <- s
@@ -173,7 +182,7 @@ icm.seiqhrf <- function(param, init, control) {
         dat$init[["r.num"]] <- dat$epi$r.num[[param$start_point]]
         dat$init[["f.num"]] <- dat$epi$f.num[[param$start_point]]
         # dat <- init_status.icm(dat)
-        dat <- get_prev.icm(dat, at = param$start_point)
+        dat <- get_prev.seiqhrf.icm(dat, at = param$start_point)
         nsteps <- (param$start_point + 1):control$nsteps
       } else if (!is.null(control[["initialize.FUN"]])) {
         # dat <- do.call(control[["initialize.FUN"]], list(param, init, control))
@@ -184,7 +193,6 @@ icm.seiqhrf <- function(param, init, control) {
 
       # Timestep loop
       for (at in nsteps) {
-
         ## User Modules
         um <- control$user.mods
         if (length(um) > 0) {
@@ -194,42 +202,42 @@ icm.seiqhrf <- function(param, init, control) {
         }
 
         ## Infection
-        if (!is.null(control[["infection.FUN"]])) {
-          dat <- do.call(control[["infection.FUN"]], list(dat, at))
-        }
-        # dat <- infection.seiqhrf.icm(dat, at)
+        # if (!is.null(control[["infection.FUN"]])) {
+        #   dat <- do.call(control[["infection.FUN"]], list(dat, at))
+        # }
+        dat <- infection.seiqhrf.icm(dat, at)
 
         ## Recovery
-        if (!is.null(control[["recovery.FUN"]])) {
-          dat <- do.call(control[["recovery.FUN"]], list(dat, at))
-        }
-        # dat <- progress.seiqhrf.icm(dat, at)
+        # if (!is.null(control[["recovery.FUN"]])) {
+        #   dat <- do.call(control[["recovery.FUN"]], list(dat, at))
+        # }
+        dat <- progress.seiqhrf.icm(dat, at)
 
         ## Departure Module
-        if (!is.null(control[["departures.FUN"]])) {
-          dat <- do.call(control[["departures.FUN"]], list(dat, at))
-        }
-        # dat <- departures.seiqhrf.icm(dat, at)
+        # if (!is.null(control[["departures.FUN"]])) {
+        #   dat <- do.call(control[["departures.FUN"]], list(dat, at))
+        # }
+        dat <- departures.seiqhrf.icm(dat, at)
 
         ## Arrival Module
-        if (!is.null(control[["arrivals.FUN"]])) {
-          dat <- do.call(control[["arrivals.FUN"]], list(dat, at))
-        }
-        # dat <- arrivals.icm(dat, at)
+        # if (!is.null(control[["arrivals.FUN"]])) {
+        #   dat <- do.call(control[["arrivals.FUN"]], list(dat, at))
+        # }
+        dat <- arrivals.icm(dat, at)
         # dat <- arrivals.seiqhrf.icm(dat, at)
 
         ## Outputs
-        if (!is.null(control[["get_prev.FUN"]])) {
-          dat <- do.call(control[["get_prev.FUN"]], list(dat, at))
-        }
-        # dat <- get_prev.seiqhrf.icm(dat, at)
+        # if (!is.null(control[["get_prev.FUN"]])) {
+        #   dat <- do.call(control[["get_prev.FUN"]], list(dat, at))
+        # }
+        dat <- get_prev.seiqhrf.icm(dat, at)
 
         ## Track progress
         verbose.icm(dat, type = "progress", s, at)
         dat <- saveout_step.icm(dat, at)
       }
 
-      # Set output
+            # Set output
       out <- saveout.seiqhrf.icm(dat, s = 1)
       class(out) <- "icm"
       return(out)

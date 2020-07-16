@@ -144,14 +144,18 @@ source_files <- c(
   "_icm.icm.seiqhrf.R"
 )
 
+base_path <- which(c(file.exists("Covid-19.Rproj"), file.exists("../Covid-19.Rproj"), file.exists("../../Covid-19.Rproj")))
+paths <- c("./", "../", "../../")
+base_path <- paths[base_path]
+
 for (source_file in source_files) {
-  source(paste0("./ext_exp/", source_file))
+  source(paste0(base_path, "R/ext_exp/", source_file), encoding = "UTF-8")
   # source(paste0("./ext/", source_file))
 }
 
-source("../R/plot_sir.R", encoding = "UTF-8")
+source(paste0(base_path, "R/plot_sir.R"), encoding = "UTF-8")
 
-m <- 3
+m <- 1
 ```
 
 ```{r fetch data, echo=FALSE}
@@ -198,7 +202,7 @@ geo_norte <- geo_dataset %>%
 
 # estimated report rate, using the algorithm from https://cmmid.github.io/visualisations/inferring-covid19-cases-from-deaths
 
-steps <- 180
+steps <- 30
 
 report_rate_list <- list()
 
@@ -791,7 +795,7 @@ simulate <- function(
 
 # PORDATA
 pt_population <- 10260893 # 2020 est
-pt_population_norte <- 3574394 # est 2019 ****** 3690681
+pt_population_norte <- 3574394 / 100 # est 2019 ****** 3690681
 pt_births <- 86557 # 2019
 pt_deaths <- 112411 # 2019 (transparencia.sns.gov.pt)
 pt_deaths_norte <- 35239 # 2018 (ine.pt)
@@ -808,7 +812,7 @@ pt_hdeathrrate <- pt_hospdeaths / pt_admissions * 1000 # 55.63542
 pt_hdeathrrate_norte <- pt_hospdeaths_norte / pt_admissions_norte * 1000 # 50.50482
 pt_hospcap <- 492000
 
-population <- pt_population_norte / 100
+population <- pt_population_norte
 start_inf <- 4
 hospcap <- pt_hospcap
 birthrate <- pt_birthrate_norte
@@ -825,8 +829,7 @@ for (i in seq_len(nrow(events))) {
   }
 }
 
-params <- list(
-  type = "SEIQHRF",
+simulation_m1 <- simulate(type = "SEIQHRF",
   nsteps = steps,
   nsims = 8,
   ncores = 8,
@@ -915,21 +918,15 @@ params <- list(
   dq.rate = (deathrate / 365) / 1000,
   dh.rate = (hdeathrrate / 365) / 1000,
   dr.rate = (deathrate / 365) / 1000,
-  # #######
-  #################
-  # Summary function for the simulation runs. median is also available, or percentiles, see the EpiModel documentation.
-  # start_point = 16,
-  # sim = teste1$sim,
-  # 
-  # start_point = 24,
-  # sim = teste2$sim,
+  start_point = 0,
+  sim = NULL,
+  out = "mean")
 
-  out = "mean"
-)
+# save(simulation_1, file = "simulation.rds")
 
 # set.seed(1) ## seed was moved to the extension code, because multithread breaks it.
 # baseline_sim <- do.call("simulate", params)
-# teste <- do.call("simulate", params)
+# teste_m2 <- do.call("simulate", params)
 #
 #
 ```
@@ -1017,7 +1014,7 @@ get_times <- function(simulate_results) {
   return(times)
 }
 
-plot_times <- get_times(teste2)
+plot_times <- get_times(simulation_1)
 
 fig <- plot_ly(plot_times,
   x = ~duration, y = ~n, colors = "Dark2",
@@ -1067,7 +1064,7 @@ fig %>% add_annotations(
 ### Overall - Interactive Plot
 
 ```{r baseline plot, echo=FALSE, fig.height=6, fig.width=10, warning=FALSE}
-plot_ly_sir(teste1, c("e.num", "i.num", "q.num", "h.num", "f.num", "r.num"), events = events) %>% add_annotations(
+plot_ly_sir(simulation_1, c("e.num", "i.num", "q.num", "h.num", "f.num", "r.num"), events = events) %>% add_annotations(
   x = 1,
   y = 1,
   xref = "paper",
@@ -1078,18 +1075,7 @@ plot_ly_sir(teste1, c("e.num", "i.num", "q.num", "h.num", "f.num", "r.num"), eve
   showarrow = F
 )
 
-plot_ly_sir(teste2, c("e.num", "i.num", "q.num", "h.num", "f.num", "r.num"), events = events) %>% add_annotations(
-  x = 1,
-  y = 1,
-  xref = "paper",
-  yref = "paper",
-  align = "right",
-  text = paste("Simulated on", version_date),
-  xanchor = "right",
-  showarrow = F
-)
-
-plot_ly_sir(teste2, c("e.num", "i.num", "q.num", "h.num", "f.num", "r.num"), events = events) %>% add_annotations(
+plot_ly_sir(simulation_m1, c("e.num", "i.num", "q.num", "h.num", "f.num", "r.num"), events = events) %>% add_annotations(
   x = 1,
   y = 1,
   xref = "paper",
@@ -1105,7 +1091,7 @@ plot_ly_sir(teste2, c("e.num", "i.num", "q.num", "h.num", "f.num", "r.num"), eve
 
 ```{r simulate2, fig.height=6, fig.width=10, message=FALSE, warning=FALSE}
 
-plot_ly_sir(teste, c("f.num", "h.num", "i.num", "q.num", "e.num", "r.num"), stacked = TRUE, grouped = TRUE, real_data = geo_norte, events = events, log = TRUE) %>% add_annotations(
+plot_ly_sir(simulation_1, c("f.num", "h.num", "i.num", "q.num", "e.num", "r.num"), stacked = TRUE, grouped = TRUE, real_data = geo_norte, events = events, log = TRUE) %>% add_annotations(
   x = 1,
   y = 1,
   xref = "paper",
@@ -1116,7 +1102,7 @@ plot_ly_sir(teste, c("f.num", "h.num", "i.num", "q.num", "e.num", "r.num"), stac
   showarrow = F
 )
 
-plot_ly_sir(teste2, c("f.num", "h.num", "i.num", "q.num", "e.num", "r.num"), stacked = TRUE, grouped = TRUE, real_data = geo_norte, events = events, log = TRUE) %>% add_annotations(
+plot_ly_sir(simulation_m1, c("f.num", "h.num", "i.num", "q.num", "e.num", "r.num"), stacked = TRUE, grouped = TRUE, real_data = geo_norte, events = events, log = TRUE) %>% add_annotations(
   x = 1,
   y = 1,
   xref = "paper",

@@ -33,7 +33,7 @@ initialize.icm <- function(param, init, control) {
 
 
   # Summary out list
-  dat <- get_prev.icm(dat, at = 1)
+  dat <- get_prev.seiqhrf.icm(dat, at = 1)
 
   return(dat)
 }
